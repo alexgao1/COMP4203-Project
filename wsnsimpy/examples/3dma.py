@@ -1,13 +1,38 @@
 import random
+import sys
 import wsnsimpy.wsnsimpy_tk as wsp
 
 SOURCE = 1
 DEST   = 99
 
+NODE_TX_RANGE = 100
+TERRAIN_SIZE = (700,700)
+TERRAIN_SIZE_WITH_Z = (700,700,500)
+
 ###########################################################
 def delay():
     return random.uniform(.2,.8)
 
+def is_point_in_sphere(center, range, checkPoint):
+    return (((checkPoint[0] - center[0])**2 + (checkPoint[1] - center[1])**2 +
+            (checkPoint[2] - center[2])**2) < range**2)
+
+def gen_rand_sphere_point(pos, dimension, range):
+    return random.uniform(pos[dimension] - range, pos[dimension] + range + 1)
+
+def gen_within_range(pos, range):
+    while True:
+        newX = newY = newZ = sys.maxsize
+        while newX > TERRAIN_SIZE_WITH_Z[0] or newX < 0:
+            newX = gen_rand_sphere_point(pos, 0, range)
+        while newY > TERRAIN_SIZE_WITH_Z[1] or newY < 0:
+            newY = gen_rand_sphere_point(pos, 1, range)
+        while newZ > TERRAIN_SIZE_WITH_Z[2] or newZ < 0:
+            newZ = gen_rand_sphere_point(pos, 2, range)
+        if is_point_in_sphere(pos, range, (newX, newY, newZ)):
+            return (newX, newY, newZ)
+
+    
 ###########################################################
 class MyNode(wsp.Node):
     tx_range = 100
@@ -96,24 +121,25 @@ sim = wsp.Simulator(
         until=100,
         timescale=1,
         visual=True,
-        terrain_size=(700,700),
+        terrain_size=TERRAIN_SIZE,
         title="3DMA Demo")
 
 # define a line style for parent links
 sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
 
 # place nodes over 100x100 grids
-baseNode = sim.add_node(MyNode, (5,5,5))
-baseNode.tx_range = 125
-baseNode.logging = True
-for x in range(5):
-    for y in range(5):
-        for z in range(4):
-            px = 50 + x*120 + random.uniform(-40,40)
-            py = 50 + y*120 + random.uniform(-40,40)
-            pz = 50 + z*120 + random.uniform(-40,40)
-            node = sim.add_node(MyNode, (px,py,pz))
-            node.tx_range = 125
-            node.logging = True
+# baseNode = sim.add_node(MyNode, (5,5,5))
+# baseNode.tx_range = NODE_TX_RANGE
+# baseNode.logging = True
+
+prevCoords = (100 + random.uniform(-40,40),
+              100 + random.uniform(-40,40),
+              100 + random.uniform(-40,40))       
+for numNodes in range(0, 125):
+    node = sim.add_node(MyNode, prevCoords)
+    node.tx_range = NODE_TX_RANGE
+    node.logging = True
+    prevCoords = gen_within_range(prevCoords, NODE_TX_RANGE)
+    
 # start the simulation
 sim.run()
