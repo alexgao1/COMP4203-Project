@@ -1,6 +1,7 @@
 import random
 import sys
 import wsnsimpy.wsnsimpy_tk as wsp
+import math
 
 # SOURCE = 1
 # Changing DEST to 1 and everything else will be a source
@@ -36,6 +37,26 @@ def gen_within_range(pos, range):
         if is_point_in_sphere(pos, range, (newX, newY, newZ)):
             return (newX, newY, newZ)
     
+###########################################################
+def distance(pos1,pos2):
+    return ((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2 + (pos1[2]-pos2[2])**2)**0.5
+
+###########################################################
+def vector(pos1,pos2):
+    return (pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2])
+
+###########################################################
+def euclid_norm(vec1,vec2):
+    return ((pos1[0]+pos2[0])**2 + (pos1[1]+pos2[1])**2 + (pos1[2]+pos2[2])**2)**0.5
+
+###########################################################
+# Calculate the angle between 2 vectors
+def angle(vec1, vec2):
+    # dot product
+    dp = sum(p*q for p,q in zip(vec1,vec2))
+    den = euclid_norm(vec1) * euclid_norm(vec2)
+    return math.acos(dp/den)
+
 ###########################################################
 class MyNode(wsp.Node):
     tx_range = 100
@@ -151,6 +172,8 @@ class sensor_node(wsp.Node):
     def init(self):
         super().init()
         self.prev = None
+        # Path to BS
+        self.path = None
 
     ###################
     def run(self):
@@ -167,7 +190,83 @@ class sensor_node(wsp.Node):
         self.scene.nodecolor(self.id,.7,.7,.7)
 
     ###################
+    # Find all neighbours within transmission range
+    def find_neighbours(IM, PN):
+        neighbour_list = []
+        U = ALL_NODES
+        # Remove itself from the list
+        # U.remove(IM)
+        # If parent node exists
+        if PN:
+            U.remove(PN)
+
+        for node in U:
+            # If within range then it's a neighbour
+            dist = distance(IM.pos, node.pos)
+            if dist <= NODE_TX_RANGE:
+                neighbour_list.append(node)
+
+        return neighbour_list
+
+    ###################
+    # VNP Handling NOT DONE
+    def vnp_handling(path_list, IM):
+        flag = 0
+
+    ###################
+    # Calculate Angle
+    def calculate_angle(neighbour_list, IM):
+        angle_list = []
+        for node in neighbour_list:
+            # Find vectors
+            vec1 = vector(IM, node)
+            vec2 = vector(IM, ALL_NODES[0])
+            # Calculate angle between 2 vectors
+            theta = angle(vec1, vec2)
+            angle_list.append(theta)
+
+        return angle_list
+
+    ###################
     # 3DMA routing protocol
+    '''
+    U = {S_1, S_2, ..., S_N}            #ALL_NODES
+    for all S in U and i = 1 -> n:      #Use zip to iterate over nodes and integer
+        IM = S
+        PN = None                       #PN means Parent Nodes
+        path.append(IM)
+        while IM is not D:
+            draw_reference_line(IM, D)
+            neighbour_list.append(find_neighbours(IM,PN))
+            if neighbour_list == 0:
+                IM = vnp_handling(path_list, IM)
+                continue
+            PN = IM
+            angle_list = calculate_angle(neighbour_list, IM)
+            IM = minimum_angle_node(angle_list)
+            path = path + IM
+        calculate_throughput(path)
+    '''
+    def routing_3dma_ds():
+        IM = self
+        PN = None
+        # Base station
+        dest = ALL_NODES[0]
+        self.path.append(IM)
+        while IM != dest:
+            # Draw reference line
+            neighbour_list = self.find_neighbours(IM, PN)
+            # If neighbour list is empty
+            if not neighbour_list:
+                IM = self.vnp_handling(self.path, IM)
+                continue
+            PN = IM
+            angle_list = self.calculate_angle(neighbour_list, IM)
+            IM = self.minimum_angle_node(angle_list)
+            path.append(IM)
+
+        self.calculate_throughput(path)
+
 
     ###################
     def start_send_data(self):
