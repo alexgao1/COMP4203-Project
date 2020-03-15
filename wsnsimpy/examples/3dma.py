@@ -44,7 +44,7 @@ def gen_within_range(pos, range):
             newZ = gen_rand_sphere_point(pos, 2, range)
         if is_point_in_sphere(pos, range, (newX, newY, newZ)):
             return (newX, newY, newZ)
-    
+
 ###########################################################
 def distance(pos1,pos2):
     return ((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2 + (pos1[2]-pos2[2])**2)**0.5
@@ -55,8 +55,8 @@ def vector(pos1,pos2):
 
 ###########################################################
 def euclid_norm(vec):
+    # Square root of the sum of squares for the vector
     return sum(p**2 for p in vec)**0.5
-    # return ((pos1[0]+pos2[0])**2 + (pos1[1]+pos2[1])**2 + (pos1[2]+pos2[2])**2)**0.5
 
 ###########################################################
 # Calculate the angle between 2 vectors
@@ -204,22 +204,17 @@ class SensorNode(wsp.Node):
 
     ###################
     # Find all neighbours within transmission range
-    def find_neighbours(self, IM, PN = None):
+    def find_neighbours(self, IM, parent_node = None):
         neighbour_list = []
-        U = copy.copy(ALL_NODES)
-        # Remove itself from the list
-        # U.remove(IM)
+        node_search_space = copy.copy(ALL_NODES)
         # Remove all nodes previously traversed to
         for node in self.traversed_nodes:
-            U.remove(node)
-        # If parent node exists
-        if PN:
-            try:
-                U.remove(PN)
-            except:
-                pass
+            node_search_space.remove(node)
+        # If parent node exists and it is still in search space
+        if parent_node and parent_node in node_search_space:
+            node_search_space.remove(parent_node)
 
-        for node in U:
+        for node in node_search_space:
             # If within range then it's a neighbour
             dist = distance(IM.pos, node.pos)
             if dist <= NODE_TX_RANGE:
@@ -228,38 +223,28 @@ class SensorNode(wsp.Node):
         return neighbour_list
 
     ###################
-    # VNP Handling NOT DONE. WERE THEY EXPECTING A POINTER WHERE PATH LIST GETS CHANGED EVERYWHERE
-    def vnp_handling(self, path_list, IM):
-        flag = 0
-        # top = len(path_list) - 1
+    # VNP Handling
+    def vnp_handling(self, IM):
         top = len(self.path)
-        # last_item = path_list.pop()
-        # top -= 1
+        # Loop required for going back up path
         while True:
-            # If origin node pick neighbour
+            # If parent node is sender then pick a new and different neighbour
             if self.path[top] == self:
-                # Create neighbour list for parent of IM. IM is used as a PN argument so it is excluded from the new neighbour list
-                neighbour_list = self.find_neighbours(self, IM) 
-                angle_list = self.calculate_angle(neighbour_list, self) 
-                return self.minimum_angle_node(angle_list) 
-            # If parent has no other alternative
+                # Create neighbour list from sender. Current IM is used as a parent_node argument so it is excluded from the new neighbour list
+                neighbour_list = self.find_neighbours(self, IM)
+                angle_list = self.calculate_angle(neighbour_list, self)
+                return self.minimum_angle_node(angle_list)
+            # If parent has no other alternatives then remove the end of the path
             if len(self.find_neighbours(self.path[top]) == 1):
                 del self.path[top]
                 top -= 1
                 continue
             # If alternative exists
-            if len(self.find_neighbours(self.path[top], IM)) >= 1 and flag == 0:
-                # Select second min angle
-                neighbour_list = self.find_neighbours(self, IM) 
-                angle_list = self.calculate_angle(neighbour_list, self) 
-                return self.minimum_angle_node(angle_list) 
-                # flag = 1
-                # return
-            # if len(self.find_neighbours(path_list[top]) >= 3 and flag == 0:
-            #     # Select third min angle
-            #     del path_list[top]
-            #     top -= 1
-            #     return
+            if len(self.find_neighbours(self.path[top], IM)) >= 1:
+                # Select next best angle
+                neighbour_list = self.find_neighbours(self, IM)
+                angle_list = self.calculate_angle(neighbour_list, self)
+                return self.minimum_angle_node(angle_list)
             else:
                 print("Temp: unspecified condition, exit vnp_handling().")
                 break
@@ -270,6 +255,7 @@ class SensorNode(wsp.Node):
         angle_list = []
         dest = ALL_NODES[0]
         for node in neighbour_list:
+            # Turns out the angle function sometimes doesn't like the scenario of trying to find the angle between the dest node and the dest node
             if node == dest:
                 angle_list.append(0)
                 continue
@@ -312,35 +298,36 @@ class SensorNode(wsp.Node):
             time = (f_size/code_rate) * (1/bit_rate)
             total_time += time
 
-        return f_size/total_time          
+        return f_size/total_time
 
     ###################
     # 3DMA routing protocol
     def routing_3dma_ds(self):
         IM = self
-        PN = None
+        parent_node = None
         # Base station
         dest = ALL_NODES[0]
         # Add itself to the path lsit
         self.path.append(IM)
         self.traversed_nodes.append(IM)
         while IM != dest:
-            # Draw reference line
-            neighbour_list = self.find_neighbours(IM, PN) # Good
+            # Find neighbours
+            neighbour_list = self.find_neighbours(IM, parent_node)
             # If neighbour list is empty then VNP handling
             if not neighbour_list:
                 temp = IM
-                IM = self.vnp_handling(self.path, IM)
+                IM = self.vnp_handling(IM)
+                # Add void node to traversed list
                 self.traversed_nodes.append(temp)
                 continue
-            PN = IM
-            angle_list = self.calculate_angle(neighbour_list, IM) #Good
-            IM = self.minimum_angle_node(angle_list) #Good
+            parent_node = IM
+            angle_list = self.calculate_angle(neighbour_list, IM)
+            IM = self.minimum_angle_node(angle_list)
             self.path.append(IM)
             self.traversed_nodes.append(IM)
 
         # Return throughput for later use. NOT SURE WHEN and WHERE this is used.
-        # return self.calculate_throughput(self.path) 
+        # return self.calculate_throughput(self.path)
 
 
     ###################
@@ -387,13 +374,13 @@ sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
 prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
-ALL_NODES.append(BaseNode)       
+ALL_NODES.append(BaseNode)
 for numNodes in range(1, 126):
     prevCoords = gen_within_range(prevCoords, NODE_TX_RANGE)
     node = sim.add_node(SensorNode, prevCoords)
     node.tx_range = NODE_TX_RANGE
     node.logging = True
     ALL_NODES.append(node)
-    
+
 # start the simulation
 sim.run()
