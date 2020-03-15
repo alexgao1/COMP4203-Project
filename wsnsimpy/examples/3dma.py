@@ -209,9 +209,27 @@ class sensor_node(wsp.Node):
         return neighbour_list
 
     ###################
-    # VNP Handling NOT DONE
+    # VNP Handling NOT DONE. WERE THEY EXPECTING A POINTER WHERE PATH LIST GETS CHANGED EVERYWHERE
     def vnp_handling(path_list, IM):
         flag = 0
+        top = len(path_list) - 1
+        del path_list[top]
+        top -= 1
+        if path_list[top] == 
+        if len(self.find_neighbours(path_list[top]) == 1):
+            del path_list[top]
+            top -= 1
+            # Go to first if statement wtf
+        if len(self.find_neighbours(path_list[top]) >= 2 and flag == 0:
+            # Select second min angle
+            flag = 1
+
+        if len(self.find_neighbours(path_list[top]) >= 3 and flag == 0:
+            # Select third min angle
+            del path_list[top]
+            top -= 1
+            
+
 
     ###################
     # Calculate Angle
@@ -228,35 +246,47 @@ class sensor_node(wsp.Node):
         return angle_list
 
     ###################
+    # Minimum Angle Node
+    def minimum_angle_node(angle_list):
+        angle_list.sort()
+        return angle_list[0]
+
+    ###################
+    # Calculate Throughput
+    def calculate_throughput(path):
+        f_size = 1024                   #PACKET SIZE?????
+        dist_list = len(path)           #NOTE: Figure out if path should be reduced by one since it MIGHT include itself
+        total_time = 0
+        code_rate = None
+        for dist in dist_list:
+            if dist <= 2:
+                code_rate = 0.75
+                bit_rate = 11
+            elif dist > 2 and dist <= 3.5:
+                code_rate = 0.5
+                bit_rate = 5.5
+            else:
+                code_rate = 0.5
+                bit_rate = 2
+
+            time = (f_size/code_rate) * (1/bit_rate)
+            total_time += time
+
+        return f_size/total_time          
+
+    ###################
     # 3DMA routing protocol
-    '''
-    U = {S_1, S_2, ..., S_N}            #ALL_NODES
-    for all S in U and i = 1 -> n:      #Use zip to iterate over nodes and integer
-        IM = S
-        PN = None                       #PN means Parent Nodes
-        path.append(IM)
-        while IM is not D:
-            draw_reference_line(IM, D)
-            neighbour_list.append(find_neighbours(IM,PN))
-            if neighbour_list == 0:
-                IM = vnp_handling(path_list, IM)
-                continue
-            PN = IM
-            angle_list = calculate_angle(neighbour_list, IM)
-            IM = minimum_angle_node(angle_list)
-            path = path + IM
-        calculate_throughput(path)
-    '''
     def routing_3dma_ds():
         IM = self
         PN = None
         # Base station
         dest = ALL_NODES[0]
+        # Add itself to the path lsit
         self.path.append(IM)
         while IM != dest:
             # Draw reference line
             neighbour_list = self.find_neighbours(IM, PN)
-            # If neighbour list is empty
+            # If neighbour list is empty then VNP handling
             if not neighbour_list:
                 IM = self.vnp_handling(self.path, IM)
                 continue
