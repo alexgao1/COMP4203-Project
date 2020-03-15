@@ -44,7 +44,7 @@ class Node:
 
     ############################
     def __repr__(self):
-        return '<Node %d:(%.2f,%.2f)>' % (self.id,self.pos[0],self.pos[1])
+        return '<Node %d:(%.2f,%.2f,%.2f)>' % (self.id,self.pos[0],self.pos[1],self.pos[2])
 
     ############################
     def __lt__(self,obj):
