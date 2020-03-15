@@ -3,13 +3,20 @@ import sys
 import wsnsimpy.wsnsimpy_tk as wsp
 import math
 
-# SOURCE = 1
+#SOURCE = 1
 # Changing DEST to 1 and everything else will be a source
 DEST   = 1
 
-NODE_TX_RANGE = 100
-TERRAIN_SIZE = (700,700)
-TERRAIN_SIZE_WITH_Z = (700,700,500)
+# Network Parameters
+NODE_TX_RANGE = 250
+AREA_LENGTH = 500
+AREA_WIDTH = 600
+AREA_HEIGHT = 500
+ENERGY_ELEC = 50 #(NANOJOULES PER BIT)
+ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ???
+
+TERRAIN_SIZE = (AREA_LENGTH, AREA_WIDTH)
+TERRAIN_SIZE_WITH_Z = (AREA_LENGTH, AREA_WIDTH, AREA_HEIGHT)
 
 # Global container for all nodes
 ALL_NODES = []
@@ -141,7 +148,7 @@ class MyNode(wsp.Node):
                 self.log(f"Got data from {src} with seq {seq}")
 
 ###########################################################
-class base_node(wsp.Node):
+class BaseNode(wsp.Node):
 
     ###################
     # Is only destination
@@ -166,7 +173,7 @@ class base_node(wsp.Node):
 
 
 ###########################################################
-class sensor_node(wsp.Node):
+class SensorNode(wsp.Node):
 
     ###################
     def init(self):
@@ -215,20 +222,25 @@ class sensor_node(wsp.Node):
         top = len(path_list) - 1
         del path_list[top]
         top -= 1
-        if path_list[top] == 
-        if len(self.find_neighbours(path_list[top]) == 1):
-            del path_list[top]
-            top -= 1
-            # Go to first if statement wtf
-        if len(self.find_neighbours(path_list[top]) >= 2 and flag == 0:
-            # Select second min angle
-            flag = 1
-
-        if len(self.find_neighbours(path_list[top]) >= 3 and flag == 0:
-            # Select third min angle
-            del path_list[top]
-            top -= 1
-            
+        while True:
+            if path_list[top] == ???:
+                return
+            if len(self.find_neighbours(path_list[top]) == 1):
+                del path_list[top]
+                top -= 1
+                continue
+            if len(self.find_neighbours(path_list[top]) >= 2 and flag == 0:
+                # Select second min angle
+                flag = 1
+                return
+            if len(self.find_neighbours(path_list[top]) >= 3 and flag == 0:
+                # Select third min angle
+                del path_list[top]
+                top -= 1
+                return
+            else:
+                print("Temp: unspecified condition, exit vnp_handling().")
+                break
 
 
     ###################
@@ -254,7 +266,7 @@ class sensor_node(wsp.Node):
     ###################
     # Calculate Throughput
     def calculate_throughput(path):
-        f_size = 1024                   #PACKET SIZE?????
+        f_size = 1                   #Packet Size is in MB
         dist_list = len(path)           #NOTE: Figure out if path should be reduced by one since it MIGHT include itself
         total_time = 0
         code_rate = None
@@ -335,17 +347,17 @@ sim = wsp.Simulator(
 sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
 
 # place nodes over 100x100 grids
-# base_node = sim.add_node(MyNode, (5,5,5))
-# base_node.tx_range = NODE_TX_RANGE
-# base_node.logging = True
+# BaseNode = sim.add_node(MyNode, (5,5,5))
+# BaseNode.tx_range = NODE_TX_RANGE
+# BaseNode.logging = True
 
 prevCoords = (40, 40, 40)
-base_node = sim.add_node(base_node, prevCoords)
-base_node.logging = True
-ALL_NODES.append(base_node)       
+BaseNode = sim.add_node(BaseNode, prevCoords)
+BaseNode.logging = True
+ALL_NODES.append(BaseNode)       
 for numNodes in range(1, 126):
     prevCoords = gen_within_range(prevCoords, NODE_TX_RANGE)
-    node = sim.add_node(sensor_node, prevCoords)
+    node = sim.add_node(SensorNode, prevCoords)
     node.tx_range = NODE_TX_RANGE
     node.logging = True
     ALL_NODES.append(node)
