@@ -185,8 +185,8 @@ class SensorNode(wsp.Node):
         self.path = []
         # Nodes that have been traversed
         self.traversed_nodes = []
-        # self.throughput = self.routing_3dma_ds()
-        self.routing_3dma_ds()
+        self.throughput = self.routing_3dma_ds()
+        # self.routing_3dma_ds()
 
     ###################
     def run(self):
@@ -278,17 +278,25 @@ class SensorNode(wsp.Node):
         return a[0]
 
     ###################
-    # Calculate Throughput DOESNT WORK NOT SURE IF IT IS CALCULATING FOR ONE NODE OR ALL NODES
+    # Calculate Throughput
     def calculate_throughput(self, path):
         f_size = 1                   #Packet Size is in MB
-        dist_list = len(path)           #NOTE: Figure out if path should be reduced by one since it MIGHT include itself
+        # dist_list = len(path)           #NOTE: Figure out if path should be reduced by one since it MIGHT include itself
         total_time = 0
         code_rate = None
-        for dist in dist_list:
-            if dist <= 2:
+        first_value = 150
+        second_value = 200
+        # Third value is implied to be: second_value < third_value < NODE_TX_RANGE
+        # for path in self.path:
+        for i in range(len(self.path) - 1):
+            path1 = self.path[i]
+            path2 = self.path[i+1]
+            # Calculate distance
+            dist = distance(path1.pos, path2.pos)
+            if dist <= first_value:
                 code_rate = 0.75
                 bit_rate = 11
-            elif dist > 2 and dist <= 3.5:
+            elif first_value > 150 and second_value <= 200:
                 code_rate = 0.5
                 bit_rate = 5.5
             else:
@@ -327,7 +335,7 @@ class SensorNode(wsp.Node):
             self.traversed_nodes.append(IM)
 
         # Return throughput for later use. NOT SURE WHEN and WHERE this is used.
-        # return self.calculate_throughput(self.path)
+        return self.calculate_throughput(self.path)
 
 
     ###################
