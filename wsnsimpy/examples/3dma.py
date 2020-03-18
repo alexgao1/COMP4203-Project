@@ -1,8 +1,8 @@
+import copy
+import math
 import random
 import sys
 import wsnsimpy.wsnsimpy_tk as wsp
-import math
-import copy
 
 #SOURCE = 1
 # Changing DEST to 1 and everything else will be a source
@@ -21,6 +21,16 @@ TERRAIN_SIZE_WITH_Z = (AREA_LENGTH, AREA_WIDTH, AREA_HEIGHT)
 
 # Global container for all nodes
 ALL_NODES = []
+
+#Global Statistics
+stats_3dma = {
+    'ete_throughputs': [],
+    'ete_net_throughput': -1,
+    'ete_delay': [],
+    'path_lengths': [],
+    'avg_path_length': -1,
+    'avg_energy_consumption': -1
+}
 
 ###########################################################
 def delay():
@@ -337,7 +347,6 @@ class SensorNode(wsp.Node):
         # Return throughput for later use. NOT SURE WHEN and WHERE this is used.
         return self.calculate_throughput(self.path)
 
-
     ###################
     def start_send_data(self):
         self.scene.clearlinks()
@@ -389,6 +398,20 @@ for numNodes in range(1, 126):
     node.tx_range = NODE_TX_RANGE
     node.logging = True
     ALL_NODES.append(node)
+
+for node in ALL_NODES:
+    node.init()
+
+# Initial statistics calculation
+for node in ALL_NODES:
+    # First node added is always the base node
+    if node.id == 0:
+        continue
+    stats_3dma['ete_throughputs'].append(node.calculate_throughput(node.path))
+    stats_3dma['path_lengths'].append(len(node.path))
+
+stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
+stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stats_3dma['path_lengths']))
 
 # start the simulation
 sim.run()
