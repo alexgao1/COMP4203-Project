@@ -63,17 +63,11 @@ class Node:
     ############################
     def send2(self,path,*args,**kwargs):
         dest = path[0]
+        # Get distance between sender and receiver then generate propagation time
         dist = distance(self.pos,dest.pos)
+        # Bigger denominator = Slower animations
         prop_time = dist/1000000
         self.delayed_exec(prop_time,dest.on_receive,self.id,path,*args,**kwargs)
-        # for (dist,node) in self.neighbor_distance_list:
-        #     if dist <= self.tx_range:
-        #         if dst == BROADCAST_ADDR or dst is node.id:
-        #             prop_time = dist/1000000
-        #             self.delayed_exec(
-        #                     prop_time,node.on_receive,self.id,*args,**kwargs)
-        #     else:
-        #         break
 
     ############################
     def send(self,dst,*args,**kwargs):

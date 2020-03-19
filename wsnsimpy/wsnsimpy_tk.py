@@ -17,14 +17,15 @@ class Node(wsnsimpy.Node):
 
     ###################
     def send2(self,path,*args,**kwargs):
+        # Radius circle
         obj_id = self.scene.circle(
                     self.pos[0], self.pos[1],
                     self.tx_range,
                     line="wsnsimpy:tx")
         super().send2(path,*args,**kwargs)
         self.delayed_exec(0.2,self.scene.delshape,obj_id)
-        # if dest is not wsnsimpy.BROADCAST_ADDR:
         destPos = path[0].pos
+        # Line from sender to receiver
         obj_id = self.scene.line(
             self.pos[0], self.pos[1],
             destPos[0], destPos[1],

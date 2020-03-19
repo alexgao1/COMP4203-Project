@@ -165,23 +165,13 @@ class BaseNode(wsp.Node):
     ###################
     # Is only destination
     def run(self):
-        # if self.id is SOURCE:
-        #     self.scene.nodecolor(self.id,0,0,1)
-        #     self.scene.nodewidth(self.id,2)
-        #     yield self.timeout(1)
-        #     self.send_rreq(self.id)
-        # elif self.id is DEST:
         self.scene.nodecolor(self.id,1,0,0)
         self.scene.nodewidth(self.id,2)
-        # else:
-        #     self.scene.nodecolor(self.id,.7,.7,.7)
 
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
         if msg == 'data':
-            # seq = kwargs['seq']
-            # self.log(f"Got data from {src} with seq {seq}")
             self.log(f"Got data from {src}")
 
 ###########################################################
@@ -196,22 +186,13 @@ class SensorNode(wsp.Node):
         # Nodes that have been traversed
         self.traversed_nodes = []
         self.throughput = self.routing_3dma_ds()
-        # self.routing_3dma_ds()
 
     ###################
     def run(self):
         # I do not know which color should be picked
-        # if self.id is SOURCE:
-        #     self.scene.nodecolor(self.id,0,0,1)
-        #     self.scene.nodewidth(self.id,2)
-        #     yield self.timeout(1)
-        #     self.send_rreq(self.id)
-        # elif self.id is DEST:
-        #     self.scene.nodecolor(self.id,1,0,0)
-        #     self.scene.nodewidth(self.id,2)
-        # else:
         self.scene.nodecolor(self.id,.7,.7,.7)
         self.log("Start sending data")
+        # Trigger an event of actually sending data
         self.start_process(self.start_send_data())
 
     ###################
@@ -351,14 +332,13 @@ class SensorNode(wsp.Node):
 
     ###################
     def start_send_data(self):
-        self.scene.clearlinks()
-        # seq = 0
-        # while True:
+        # self.scene.clearlinks() #It looks better without this
+        # while True: #While loop if needed
+        # Wait a random time from 0-10 seconds
         yield self.timeout(random.random()*10)
         self.log(f"Send data to {DEST}")
+        # Send data to the node in the path
         self.send_data(self.id, self.path[1::])
-            # seq += 1
-
 
     ###################
     def send_data(self,src, path):
@@ -367,21 +347,12 @@ class SensorNode(wsp.Node):
         self.send2(path, msg='data', src=src)
 
     ###################
-    # Send: queue, msg, src
-    # Receive: queue, msg, src
-    #
     def on_receive(self, sender, path, msg, src, **kwargs):
+        # Take the next node out of the path and forward packet with the new path
         next_node = path.pop(0)
         if self == next_node:
             yield self.timeout(.2)
             self.send_data(src, path, **kwargs)
-        # if msg == 'data':
-        #     if self.id is not DEST:
-        #         yield self.timeout(.2)
-        #         self.send_data(src,**kwargs)
-        #     else:
-        #         seq = kwargs['seq']
-        #         self.log(f"Got data from {src} with seq {seq}")
 
 ###########################################################
 sim = wsp.Simulator(
