@@ -1,6 +1,6 @@
 import sys
 import os
-from . import wsnsimpy 
+from . import wsnsimpy
 from .wsnsimpy import BROADCAST_ADDR, start_delayed, ensure_generator
 from threading import Thread
 from .topovis import Scene,LineStyle
@@ -14,6 +14,22 @@ class Node(wsnsimpy.Node):
         super().__init__(sim,id,pos)
         self.scene = self.sim.scene
         self.scene.node(id,*pos)
+
+    ###################
+    def send2(self,path,*args,**kwargs):
+        obj_id = self.scene.circle(
+                    self.pos[0], self.pos[1],
+                    self.tx_range,
+                    line="wsnsimpy:tx")
+        super().send2(path,*args,**kwargs)
+        self.delayed_exec(0.2,self.scene.delshape,obj_id)
+        # if dest is not wsnsimpy.BROADCAST_ADDR:
+        destPos = path[0].pos
+        obj_id = self.scene.line(
+            self.pos[0], self.pos[1],
+            destPos[0], destPos[1],
+            line="wsnsimpy:unicast")
+        self.delayed_exec(0.2,self.scene.delshape,obj_id)
 
     ###################
     def send(self,dest,*args,**kwargs):

@@ -177,12 +177,12 @@ class BaseNode(wsp.Node):
         #     self.scene.nodecolor(self.id,.7,.7,.7)
 
     ###################
-    def on_receive(self, sender, msg, src, **kwargs):
+    def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
         if msg == 'data':
-            seq = kwargs['seq']
-            self.log(f"Got data from {src} with seq {seq}")
-
+            # seq = kwargs['seq']
+            # self.log(f"Got data from {src} with seq {seq}")
+            self.log(f"Got data from {src}")
 
 ###########################################################
 class SensorNode(wsp.Node):
@@ -211,6 +211,8 @@ class SensorNode(wsp.Node):
         #     self.scene.nodewidth(self.id,2)
         # else:
         self.scene.nodecolor(self.id,.7,.7,.7)
+        self.log("Start sending data")
+        self.start_process(self.start_send_data())
 
     ###################
     # Find all neighbours within transmission range
@@ -350,27 +352,36 @@ class SensorNode(wsp.Node):
     ###################
     def start_send_data(self):
         self.scene.clearlinks()
-        seq = 0
-        while True:
-            yield self.timeout(1)
-            self.log(f"Send data to {DEST} with seq {seq}")
-            self.send_data(self.id, seq)
-            seq += 1
+        # seq = 0
+        # while True:
+        yield self.timeout(random.random()*10)
+        self.log(f"Send data to {DEST}")
+        self.send_data(self.id, self.path[1::])
+            # seq += 1
+
 
     ###################
-    def send_data(self,src,seq):
-        self.log(f"Forward data with seq {seq} via {self.next}")
-        self.send(self.next, msg='data', src=src, seq=seq)
+    def send_data(self,src, path):
+        next_node = path[0]
+        self.log(f"Forward data to {next_node.id}")
+        self.send2(path, msg='data', src=src)
 
     ###################
-    def on_receive(self, sender, msg, src, **kwargs):
-        if msg == 'data':
-            if self.id is not DEST:
-                yield self.timeout(.2)
-                self.send_data(src,**kwargs)
-            else:
-                seq = kwargs['seq']
-                self.log(f"Got data from {src} with seq {seq}")
+    # Send: queue, msg, src
+    # Receive: queue, msg, src
+    #
+    def on_receive(self, sender, path, msg, src, **kwargs):
+        next_node = path.pop(0)
+        if self == next_node:
+            yield self.timeout(.2)
+            self.send_data(src, path, **kwargs)
+        # if msg == 'data':
+        #     if self.id is not DEST:
+        #         yield self.timeout(.2)
+        #         self.send_data(src,**kwargs)
+        #     else:
+        #         seq = kwargs['seq']
+        #         self.log(f"Got data from {src} with seq {seq}")
 
 ###########################################################
 sim = wsp.Simulator(
@@ -392,7 +403,8 @@ prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
-for numNodes in range(1, 126):
+max_nodes = 125
+for numNodes in range(1, max_nodes + 1):
     prevCoords = gen_within_range(prevCoords, NODE_TX_RANGE)
     node = sim.add_node(SensorNode, prevCoords)
     node.tx_range = NODE_TX_RANGE
