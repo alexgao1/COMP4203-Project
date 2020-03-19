@@ -172,7 +172,7 @@ class BaseNode(wsp.Node):
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
         if msg == 'data':
-            self.log(f"Got data from {src}")
+            self.log(f"Got data from {src}!")
 
 ###########################################################
 class SensorNode(wsp.Node):
@@ -191,7 +191,7 @@ class SensorNode(wsp.Node):
     def run(self):
         # I do not know which color should be picked
         self.scene.nodecolor(self.id,.7,.7,.7)
-        self.log("Start sending data")
+        self.log("Start sending data.")
         # Trigger an event of actually sending data
         self.start_process(self.start_send_data())
 
@@ -336,14 +336,14 @@ class SensorNode(wsp.Node):
         # while True: #While loop if needed
         # Wait a random time from 0-10 seconds
         yield self.timeout(random.random()*10)
-        self.log(f"Send data to {DEST}")
+        self.log(f"{self.id} wants to send data to the base node!")
         # Send data to the node in the path
         self.send_data(self.id, self.path[1::])
 
     ###################
     def send_data(self,src, path):
         next_node = path[0]
-        self.log(f"Forward data to {next_node.id}")
+        self.log(f"Forward data to {next_node.id}! (Origin: {src})")
         self.send2(path, msg='data', src=src)
 
     ###################
