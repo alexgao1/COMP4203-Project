@@ -34,13 +34,14 @@ class Node:
     tx_range = 0
 
     ############################
-    def __init__(self,sim,id,pos):
+    def __init__(self,sim,id,pos,res=None):
         self.pos = pos
         self.sim = sim
         self.id  = id
         self.logging = True
         self.neighbor_distance_list = []
         self.timeout = self.sim.timeout
+        self.resource = res
 
     ############################
     def __repr__(self):
@@ -378,6 +379,8 @@ class Simulator:
         self.timescale = timescale
         self.timeout = self.env.timeout
         self.random = random.Random(seed)
+        # This resource represents allowing a single node to send at a time
+        self.resource = simpy.Resource(self.env, capacity=1)
 
     ############################
     def init(self):
@@ -396,7 +399,7 @@ class Simulator:
     ############################
     def add_node(self,nodeclass,pos):
         id = len(self.nodes)
-        node = nodeclass(self,id,pos)
+        node = nodeclass(self,id,pos, self.resource)
         self.nodes.append(node)
         self.update_neighbor_list(id)
         return node

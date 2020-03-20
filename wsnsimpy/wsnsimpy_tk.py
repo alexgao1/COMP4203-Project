@@ -10,8 +10,8 @@ from .topovis.TkPlotter import Plotter
 class Node(wsnsimpy.Node):
 
     ###################
-    def __init__(self,sim,id,pos):
-        super().__init__(sim,id,pos)
+    def __init__(self,sim,id,pos, res=None):
+        super().__init__(sim,id,pos,res)
         self.scene = self.sim.scene
         self.scene.node(id,*pos)
 

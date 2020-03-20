@@ -2,4 +2,4 @@
 **/.settings
 /inet
 **/.vscode
-**/__pycache__/
+*.pyc

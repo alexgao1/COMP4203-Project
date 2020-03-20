@@ -333,12 +333,18 @@ class SensorNode(wsp.Node):
     ###################
     def start_send_data(self):
         # self.scene.clearlinks() #It looks better without this
-        # while True: #While loop if needed
-        # Wait a random time from 0-10 seconds
-        yield self.timeout(random.random()*10)
-        self.log(f"{self.id} wants to send data to the base node!")
-        # Send data to the node in the path
-        self.send_data(self.id, self.path[1::])
+        while True:
+            # Gives a 20% probability it will send data
+            if random.random() > 0.8:
+                with self.resource.request() as req:
+                    # Once the resource is open it will send data
+                    yield req
+                    yield self.timeout(1)
+                self.log(f"{self.id} wants to send data to the base node!")
+                # Send data to the node in the path
+                self.send_data(self.id, self.path[1::])
+            else:
+                yield self.timeout(1)
 
     ###################
     def send_data(self,src, path):
