@@ -9,12 +9,13 @@ import wsnsimpy.wsnsimpy_tk as wsp
 DEST   = 1
 
 # Network Parameters
-NODE_TX_RANGE = 250
+NODE_TX_RANGE = 25
 AREA_LENGTH = 500
 AREA_WIDTH = 600
 AREA_HEIGHT = 500
 ENERGY_ELEC = 50 #(NANOJOULES PER BIT)
-ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ???
+ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ??? unused
+PACKET_SIZE = 8000000 # BITS
 
 TERRAIN_SIZE = (AREA_LENGTH, AREA_WIDTH)
 TERRAIN_SIZE_WITH_Z = (AREA_LENGTH, AREA_WIDTH, AREA_HEIGHT)
@@ -29,6 +30,7 @@ stats_3dma = {
     'ete_delay': [],
     'path_lengths': [],
     'avg_path_length': -1,
+    'indiv_energy_consumption': [],
     'avg_energy_consumption': -1
 }
 
@@ -186,6 +188,7 @@ class SensorNode(wsp.Node):
         # Nodes that have been traversed
         self.traversed_nodes = []
         self.throughput = self.routing_3dma_ds()
+        self.energy_used = 0
 
     ###################
     def run(self):
@@ -350,6 +353,7 @@ class SensorNode(wsp.Node):
     def send_data(self,src, path):
         next_node = path[0]
         self.log(f"Forward data to {next_node.id}! (Origin: {src})")
+        self.energy_used += ENERGY_ELEC * PACKET_SIZE #Easier to define our packet size in bits here as it's energy is per bit
         self.send2(path, msg='data', src=src)
 
     ###################
@@ -359,6 +363,9 @@ class SensorNode(wsp.Node):
         if self == next_node:
             yield self.timeout(.2)
             self.send_data(src, path, **kwargs)
+    
+    def finish(self):
+        stats_3dma['indiv_energy_consumption'].append(self.energy_used)
 
 ###########################################################
 sim = wsp.Simulator(
@@ -380,7 +387,7 @@ prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
-max_nodes = 125
+max_nodes = 5
 for numNodes in range(1, max_nodes + 1):
     prevCoords = gen_within_range(prevCoords, NODE_TX_RANGE)
     node = sim.add_node(SensorNode, prevCoords)
@@ -404,3 +411,5 @@ stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stat
 
 # start the simulation
 sim.run()
+
+stats_3dma['avg_energy_consumption'] = float(sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption']))
