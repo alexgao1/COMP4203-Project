@@ -1,3 +1,4 @@
+from beautifultable import BeautifulTable                                         
 import copy
 import math
 import random
@@ -12,13 +13,14 @@ import hashlib
 DEST   = 1
 
 # Network Parameters
-NODE_TX_RANGE = 250
-AREA_LENGTH = 500
-AREA_WIDTH = 600
-AREA_HEIGHT = 500
+node_tx_range = 250
+AREA_LENGTH = 5000
+AREA_WIDTH = 6000
+AREA_HEIGHT = 5000
 ENERGY_ELEC = 50 #(NANOJOULES PER BIT)
 ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ???
 PACKET_SIZE = 8000000 # BITS
+NANOJ_TO_JOULE = 1000000000                           
 
 TERRAIN_SIZE = (AREA_LENGTH, AREA_WIDTH)
 TERRAIN_SIZE_WITH_Z = (AREA_LENGTH, AREA_WIDTH, AREA_HEIGHT)
@@ -248,7 +250,7 @@ class SensorNode(wsp.Node):
         for node in node_search_space:
             # If within range then it's a neighbour
             dist = distance(IM.pos, node.pos)
-            if dist <= NODE_TX_RANGE:
+            if dist <= node_tx_range:
                 neighbour_list.append(node)
 
         return neighbour_list
@@ -317,7 +319,7 @@ class SensorNode(wsp.Node):
         code_rate = None
         first_value = 150
         second_value = 200
-        # Third value is implied to be: second_value < third_value < NODE_TX_RANGE
+        # Third value is implied to be: second_value < third_value < node_tx_range
         # for path in self.path:
         for i in range(len(self.path) - 1):
             path1 = self.path[i]
@@ -496,7 +498,7 @@ sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
 
 # place nodes over 100x100 grids
 # BaseNode = sim.add_node(MyNode, (5,5,5))
-# BaseNode.tx_range = NODE_TX_RANGE
+# BaseNode.tx_range = node_tx_range
 # BaseNode.logging = True
 
 prevCoords = (40, 40, 40)
@@ -505,9 +507,9 @@ BaseNode.logging = True
 ALL_NODES.append(BaseNode)
 max_nodes = 125
 for numNodes in range(1, max_nodes + 1):
-    prevCoords = gen_within_range(prevCoords, NODE_TX_RANGE)
+    prevCoords = gen_within_range(prevCoords, node_tx_range)
     node = sim.add_node(SensorNode, prevCoords)
-    node.tx_range = NODE_TX_RANGE
+    node.tx_range = node_tx_range
     node.logging = True
     ALL_NODES.append(node)
 
@@ -521,11 +523,19 @@ for node in ALL_NODES:
         continue
     stats_3dma['ete_throughputs'].append(node.calculate_throughput(node.path))
     stats_3dma['path_lengths'].append(len(node.path))
-
+stats = BeautifulTable()
+stats.column_headers = ["Metric", "Value"]                                          
 stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
 stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stats_3dma['path_lengths']))
 
 # start the simulation
 sim.run()
 
-stats_3dma['avg_energy_consumption'] = float(sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption']))
+stats_3dma['avg_energy_consumption'] = float((sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE)
+
+stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma['ete_net_throughput']])
+stats.append_row(["End-to-End Network Delay (Seconds)", "???"])
+stats.append_row(["Average Path Length (Hops)", stats_3dma['avg_path_length']])
+stats.append_row(["Average Energy Consumption (Joules)", stats_3dma['avg_energy_consumption']])
+
+print(stats)
