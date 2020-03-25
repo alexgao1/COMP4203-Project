@@ -381,6 +381,7 @@ class Simulator:
         self.random = random.Random(seed)
         # This resource represents allowing a single node to send at a time
         self.resource = simpy.Resource(self.env, capacity=1)
+        self.scheduler = None
 
     ############################
     def init(self):
@@ -395,6 +396,10 @@ class Simulator:
     def delayed_exec(self,delay,func,*args,**kwargs):
         func = ensure_generator(self.env,func,*args,**kwargs)
         start_delayed(self.env,func,delay=delay)
+
+    ############################
+    def add_scheduler(self, scheduler):
+        self.scheduler = scheduler
 
     ############################
     def add_node(self,nodeclass,pos):
@@ -442,6 +447,9 @@ class Simulator:
             n.init()
         for n in self.nodes:
             self.env.process(ensure_generator(self.env,n.run))
+        # If scheduler exists
+        if self.scheduler:
+            self.env.process(ensure_generator(self.env,self.scheduler.sim_loop))
         self.env.run(until=self.until)
         for n in self.nodes:
             n.finish()

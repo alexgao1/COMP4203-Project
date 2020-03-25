@@ -1,4 +1,4 @@
-from beautifultable import BeautifulTable                                         
+from beautifultable import BeautifulTable
 import copy
 import math
 import random
@@ -13,14 +13,14 @@ import hashlib
 DEST   = 1
 
 # Network Parameters
-node_tx_range = 250
-AREA_LENGTH = 5000
-AREA_WIDTH = 6000
-AREA_HEIGHT = 5000
+node_tx_range = 100
+AREA_LENGTH = 500
+AREA_WIDTH = 600
+AREA_HEIGHT = 500
 ENERGY_ELEC = 50 #(NANOJOULES PER BIT)
 ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ???
 PACKET_SIZE = 8000000 # BITS
-NANOJ_TO_JOULE = 1000000000                           
+NANOJ_TO_JOULE = 1000000000
 
 TERRAIN_SIZE = (AREA_LENGTH, AREA_WIDTH)
 TERRAIN_SIZE_WITH_Z = (AREA_LENGTH, AREA_WIDTH, AREA_HEIGHT)
@@ -35,7 +35,7 @@ stats_3dma = {
     'ete_delay': [],
     'path_lengths': [],
     'avg_path_length': -1,
-    'indiv_energy_consumption': [],                               
+    'indiv_energy_consumption': [],
     'avg_energy_consumption': -1
 }
 
@@ -230,8 +230,8 @@ class SensorNode(wsp.Node):
         # If current node's hash is greater than all neighbours
         if all([self.hash > node.hash and node.state != EntityState.INACTIVE for node in neighbour_list]):
             self.state = EntityState.ACTIVE
-        else if any([node.state == EntityState.ACTIVE for node in neighbour_list]):
-            self.state = INACTIVE
+        elif any([node.state == EntityState.ACTIVE for node in neighbour_list]):
+            self.state = EntityState.INACTIVE
 
     ###################
     # Find all neighbours within transmission range
@@ -376,21 +376,28 @@ class SensorNode(wsp.Node):
         while True:
             # Gives a 20% probability it will send data
             if random.random() > 0.8:
-                with self.resource.request() as req:
+                # with self.resource.request() as req:
                     # Once the resource is open it will send data
-                    yield req
-                    yield self.timeout(1)
+                    # yield req
+                yield self.timeout(1)
                 self.log(f"{self.id} wants to send data to the base node!")
                 # Send data to the node in the path
-                self.send_data(self.id, self.path[1::])
+                # self.send_data(self.id, self.path[1::])
+                onama_scheduler.request_to_send(self)
+                break
             else:
                 yield self.timeout(1)
+
+    def success_send(self):
+        self.send_data(self.id, self.path[1::])
+        # After sending it will collect and keep trying
+        self.start_send_data()
 
     ###################
     def send_data(self,src, path):
         next_node = path[0]
         self.log(f"Forward data to {next_node.id}! (Origin: {src})")
-        self.energy_used += ENERGY_ELEC * PACKET_SIZE #Easier to define our packet size in bits here as it's energy is per bit                                     
+        self.energy_used += ENERGY_ELEC * PACKET_SIZE #Easier to define our packet size in bits here as it's energy is per bit
         self.send2(path, msg='data', src=src)
 
     ###################
@@ -401,31 +408,77 @@ class SensorNode(wsp.Node):
             yield self.timeout(.2)
             self.send_data(src, path, **kwargs)
     def finish(self):
-        stats_3dma['indiv_energy_consumption'].append(self.energy_used)                                                                   
+        stats_3dma['indiv_energy_consumption'].append(self.energy_used)
+
+###########################################################
+class ContentionEntity():
+    def __init__(self, node):
+        # Exclude destination node
+        self.path = node.path[:-1]
+        self.id = node.id
+        self.hash = self.generate_hash()
+        self.state = EntityState.UNDECIDED
+        self.neighbours = []
+
+    def add_neighbour(self, ent):
+        self.neighbours.append(ent)
+
+    # Remove specific neighbour
+    def remove_neighbour(self, ent):
+        try:
+            self.neighbours.remove(ent)
+        except:
+            pass
+
+    def remove_neighbour_list(self, ent_list):
+        for ent in ent_list:
+            self.remove_neighbour(ent)
+
+    # Remove ALL neighbours
+    def clear_neighbours(self):
+        self.neighbours = []
+
+    def generate_hash(self):
+        # First you concat the id and the time
+        concat_string = str(self.id) + str(TIME)
+        # Next you hash that concat, digest it in hex, convert it to base 10, cast it to a string, concat with id again, then cast it back to an int
+        self.hash = int(str(int(hashlib.md5(concat_string.encode('utf-8')).hexdigest(),16)) + str(self.id))
+
+    def get_hash(self):
+        return self.hash
+
+    def dmis(self):
+        # while self.state == EntityState.UNDECIDED: #Will cause infinite loop
+        # If current node's hash is greater than all neighbours
+        if self.state == EntityState.UNDECIDED:
+            # if len(self.neighbours) < 1:
+            #     print("Node " + str(self.id) + " has no neighbours")
+            if all([self.hash > ent.hash and ent.state != EntityState.INACTIVE for ent in self.neighbours]):
+                self.state = EntityState.ACTIVE
+                # print("Node " + str(self.id) + "  \tis now ACTIVE")
+            elif any([node.state == EntityState.ACTIVE for node in self.neighbours]):
+                self.state = EntityState.INACTIVE
+                # print("Node " + str(self.id) + "  \tis now INACTIVE")
 
 ###########################################################
 # ONAMA Scheduler
 class Scheduler():
-    class ContentionEntity():
-        def __init__(self, node):
-            # Exclude destination node
-            self.path = node.path[:-1]
-            self.state = EntityState.UNDECIDED
-
-        # DMIS????
-        def find_state(self, neighbours):
-            while self.state == EntityState.UNDECIDED:
-                pass
-
-    def __init__(self):
+    def __init__(self, res):
         # 2D list
+        self.resource = res
+        # self.timeout = self.sim.timeout IMPORT SIM INTO THIS CLASS CHECK LINE $# OF wsnsimpy.py *********************************
         self.queue = []
         self.MIS = []
         self.ent_to_node_pair = {}
         self.node_to_ent_pair = {}
         self.graph = []
+        self.graph_vertices = []
+        self.graph_edges = []
         self.entities = []
-        self.node_list = []
+        self.timeout = sim.timeout
+        for node in ALL_NODES:
+            if type(node) is SensorNode:
+                self.add_node(node)
 
     '''
     Scheduler gets initialized with ALL_NODES and stores it. Every node then gets a contention entity, dictionary is made for both
@@ -437,53 +490,92 @@ class Scheduler():
     Reset graph and mis lists
     Every node that didn't get to send retries while the ones that completed go through the probability again
     TODO: Bring dmis, hash and state from SensorNode into either Scheduler or ContentionEntity
+    Remove just active nodes from MIS after they send
+    Regenerate hashes somewhere
     '''
     def add_node(self, node):
-        self.node_list.append(node)
         ent = ContentionEntity(node)
         self.entities.append(ent)
         self.ent_to_node_pair[ent] = node
         self.node_to_ent_pair[node] = ent
 
+    def request_to_send(self, node):
+        ent = self.node_to_ent_pair[node]
+        self.add_to_graph(ent)
+
+    def add_to_graph(self, ent):
+        # Update entity hash when entering the graph
+        ent.generate_hash()
+        # From all current entities in the graph check for path overlaps
+        for e in self.graph_vertices:
+            # If there is overlap in paths make an edge between the two entities
+            if list(set(ent.path) & set(e.path)) != []:
+                # Both entities add each other as neighbours
+                ent.add_neighbour(e)
+                e.add_neighbour(ent)
+                pair = (ent, e)
+                self.graph_edges.append(pair)
+        # Add it to current verticies
+        self.graph_vertices.append(ent)
+
+    def sim_loop(self):
+        while True:
+            # with self.resource.request() as req:
+            yield self.timeout(3)
+            update_time()
+            # Run all nodes in MIS and clear things
+            print("Running MIS")
+            self.run_mis()
+
+    def run_mis(self):
+        # Make sure all entities are not UNDECIDED
+        self.set_dmis()
+        # Add all active entities to the MIS
+        self.mis()
+        # Run all ACTIVE nodes
+        for active_ent in self.MIS:
+            self.ent_to_node_pair[active_ent].success_send()
+
+        # Remove active entities
+        removed_ents = []
+        for ent in self.MIS:
+            # Remove vertices
+            self.graph_vertices.remove(ent)
+            # Remove edges. filter removes any instance that satisfies the condition of the first argument.
+            # Any edge tuple that contains an active entry is filtered out
+            self.graph_edges = list(filter(lambda x: x[0] != ent and x[1] != ent, self.graph_edges))
+            ent.clear_neighbours()
+            removed_ents.append(ent)
+
+        print("Nodes sent: ", [x.id for x in removed_ents])
+
+        # Reset entity states of left over nodes
+        for ent in self.graph_vertices:
+            ent.state = EntityState.UNDECIDED
+            # Regenerate hash since they won't be readded
+            ent.generate_hash()
+            # Remove
+            ent.remove_neighbour_list(removed_ents)
+        # Empty MIS
+        self.MIS = []
+
     def set_dmis(self):
         undecided = True
+        # Sets every nodes state until none left are undecided
         while undecided:
-            for node in self.node_list:
+            for node in self.graph_vertices:
                 node.dmis()
             undecided = self.remaining_undecided()
 
     def mis(self):
-        for node in self.node_list:
-            if node.state == EntityState.ACTIVE:
-                self.MIS.append(self.node_to_ent_pair[node])
-
-
+        # Add all active nodes to MIS
+        for ent in self.graph_vertices:
+            if ent.state == EntityState.ACTIVE:
+                self.MIS.append(ent)
 
     def remaining_undecided(self):
         # Returns true if all node states are NOT undecided
-        return all([node.state != EntityState.UNDECIDED for node in self.node_list])
-
-    def request_to_send(self, node):
-        ent = ContentionEntity(node)
-        self.queue.append(ent)
-        self.pairs[ent] = node
-        self.add_to_graph(ent)
-        # Return boolean
-
-    def add_to_graph(self, ent):
-        neighbours = []
-        # From all current entities check for path overlaps
-        for e in self.entities:
-            # If there is overlap in paths make an edge between the two entities
-            if list(set(ent) & set(e)) != []:
-                pair = (ent, e)
-                self.graph.append(pair)
-                neighbours.append(pair)
-        self.entities.append(ent)
-        ent.find_state(neighbours)
-
-    def dmis(self):
-        pass
+        return not all([node.state != EntityState.UNDECIDED for node in self.graph_vertices])
 
 ###########################################################
 sim = wsp.Simulator(
@@ -516,6 +608,9 @@ for numNodes in range(1, max_nodes + 1):
 for node in ALL_NODES:
     node.init()
 
+onama_scheduler = Scheduler(sim.resource)
+sim.add_scheduler(onama_scheduler)
+
 # Initial statistics calculation
 for node in ALL_NODES:
     # First node added is always the base node
@@ -524,7 +619,7 @@ for node in ALL_NODES:
     stats_3dma['ete_throughputs'].append(node.calculate_throughput(node.path))
     stats_3dma['path_lengths'].append(len(node.path))
 stats = BeautifulTable()
-stats.column_headers = ["Metric", "Value"]                                          
+stats.column_headers = ["Metric", "Value"]
 stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
 stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stats_3dma['path_lengths']))
 
