@@ -352,7 +352,7 @@ class SensorNode(wsp.Node):
                 yield self.timeout(1)
 
     ###################
-    def send_data(self,src, path):
+    def send_data(self, src, path):
         next_node = path[0]
         self.log(f"Forward data to {next_node.id}! (Origin: {src})")
         self.energy_used += ENERGY_ELEC * PACKET_SIZE #Easier to define our packet size in bits here as it's energy is per bit
@@ -378,19 +378,16 @@ sim = wsp.Simulator(
         terrain_size=TERRAIN_SIZE,
         title="3DMA Demo")
 
-# define a line style for parent links
+# Define a line style for parent links
 sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
-
-# place nodes over 100x100 grids
-# BaseNode = sim.add_node(MyNode, (5,5,5))
-# BaseNode.tx_range = node_tx_range
-# BaseNode.logging = True
 
 prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
 max_nodes = 100
+
+# Generate nodes
 for numNodes in range(1, max_nodes + 1):
     prevCoords = gen_within_range(prevCoords, node_tx_range)
     node = sim.add_node(SensorNode, prevCoords)
@@ -398,6 +395,7 @@ for numNodes in range(1, max_nodes + 1):
     node.logging = True
     ALL_NODES.append(node)
 
+# Initialize them, including route building
 for node in ALL_NODES:
     node.init()
 
@@ -415,7 +413,7 @@ stats.column_headers = ["Statistic", "Value"]
 stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
 stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stats_3dma['path_lengths']))
 
-# start the simulation
+# Start the simulation
 sim.run()
 
 try:
