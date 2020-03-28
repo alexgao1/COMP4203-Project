@@ -311,7 +311,7 @@ class SensorNode(wsp.Node):
     def success_send(self):
         self.send_data(self.id, self.path[1::], 0)
         # After sending it will collect and keep trying
-        self.start_send_data()
+        self.start_process(self.start_send_data())
 
     ###################
     def send_data(self,src, path, msg):
@@ -341,6 +341,15 @@ class ContentionEntity():
         self.hash = self.generate_hash()
         self.state = EntityState.UNDECIDED
         self.neighbours = []
+
+        ############################
+    def __repr__(self):
+        s = "I"
+        if self.state == EntityState.UNDECIDED:
+            s = "U"
+        elif self.state ==EntityState.ACTIVE:
+            s = "A"
+        return '<CE %d:N=%d:S=%s>' % (self.id,len(self.neighbours,), s)
 
     def add_neighbour(self, ent):
         self.neighbours.append(ent)
@@ -463,6 +472,7 @@ class Scheduler():
         for ent in self.MIS:
             # Remove vertices
             self.graph_vertices.remove(ent)
+            ent.state = EntityState.UNDECIDED
             # Remove edges. filter removes any instance that satisfies the condition of the first argument.
             # Any edge tuple that contains an active entry is filtered out
             self.graph_edges = list(filter(lambda x: x[0] != ent and x[1] != ent, self.graph_edges))
@@ -532,12 +542,12 @@ class Scheduler():
             # break
     # if not countFlag and not rangeFlag:
         # break
-        
+
 # node_tx_range = range_input
 # max_nodes = count_input
 
 sim = wsp.Simulator(
-        until=20,
+        until=100,
         timescale=1,
         visual=True,
         terrain_size=TERRAIN_SIZE,
@@ -583,12 +593,12 @@ try:
     stats_3dma_onama['avg_energy_consumption'] = (sum(stats_3dma_onama['indiv_energy_consumption']) / len(stats_3dma_onama['indiv_energy_consumption'])) / NANOJ_TO_JOULE
 except ZeroDivisionError:
     stats_3dma_onama['avg_energy_consumption'] = "N/A"
-    
+
 try:
     stats_3dma_onama['ete_net_delay'] = sum(stats_3dma_onama['ete_delay']) / len(stats_3dma_onama['ete_delay'])
 except ZeroDivisionError:
     stats_3dma_onama['ete_net_delay'] = "N/A"
-    
+
 try:
     stats_3dma_onama['mean_concurrency'] = sum([len(slot) for slot in stats_3dma_onama['senders_per_mis']]) / len(stats_3dma_onama['senders_per_mis'])
 except ZeroDivisionError:
