@@ -175,8 +175,8 @@ class BaseNode(wsp.Node):
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
-        if msg == 'data':
-            self.log(f"Got data from {src}!")
+        print(f"PROP TIME: {msg}")
+        self.log(f"Got data from {src}!")
 
 ###########################################################
 class SensorNode(wsp.Node):
@@ -356,7 +356,7 @@ class SensorNode(wsp.Node):
         next_node = path[0]
         self.log(f"Forward data to {next_node.id}! (Origin: {src})")
         self.energy_used += ENERGY_ELEC * PACKET_SIZE #Easier to define our packet size in bits here as it's energy is per bit
-        self.send2(path, msg='data', src=src)
+        self.send2(path, msg=0, src=src)
 
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
@@ -364,6 +364,7 @@ class SensorNode(wsp.Node):
         next_node = path.pop(0)
         if self == next_node:
             yield self.timeout(.2)
+            self.energy_used += ENERGY_ELEC * PACKET_SIZE
             self.send_data(src, path, **kwargs)
     
     def finish(self):
@@ -407,16 +408,26 @@ for node in ALL_NODES:
         continue
     stats_3dma['ete_throughputs'].append(node.calculate_throughput(node.path))
     stats_3dma['path_lengths'].append(len(node.path))
+    
 stats = BeautifulTable()
-stats.column_headers = ["Metric", "Value"]
+stats.column_headers = ["Statistic", "Value"]
+
 stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
 stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stats_3dma['path_lengths']))
 
 # start the simulation
 sim.run()
 
-stats_3dma['avg_energy_consumption'] = float((sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE)
+try:
+    stats_3dma['avg_energy_consumption'] = float((sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE)
+except ZeroDivisionError:
+    stats_3dma['avg_energy_consumption'] = "N/A"
 
+stats.append_row(["Node Count", max_nodes])
+stats.append_row(["Node Range", node_tx_range])
+stats.append_row(["Simulation Length", AREA_LENGTH])
+stats.append_row(["Simulation Width", AREA_WIDTH])
+stats.append_row(["Simulation Height", AREA_HEIGHT])
 stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma['ete_net_throughput']])
 stats.append_row(["End-to-End Network Delay (Seconds)", "???"])
 stats.append_row(["Average Path Length (Hops)", stats_3dma['avg_path_length']])

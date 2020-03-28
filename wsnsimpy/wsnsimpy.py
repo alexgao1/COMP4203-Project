@@ -68,6 +68,7 @@ class Node:
         dist = distance(self.pos,dest.pos)
         # Bigger denominator = Slower animations
         prop_time = dist/1000000
+        kwargs['msg'] += prop_time
         self.delayed_exec(prop_time,dest.on_receive,self.id,path,*args,**kwargs)
 
     ############################
