@@ -175,7 +175,7 @@ class BaseNode(wsp.Node):
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
-        print(f"PROP TIME: {msg}")
+        self.log(f"PROP TIME: {msg}")
         self.log(f"Got data from {src}!")
 
 ###########################################################
@@ -347,16 +347,16 @@ class SensorNode(wsp.Node):
                     yield self.timeout(1)
                 self.log(f"{self.id} wants to send data to the base node!")
                 # Send data to the node in the path
-                self.send_data(self.id, self.path[1::])
+                self.send_data(self.id, self.path[1::], 0)
             else:
                 yield self.timeout(1)
 
     ###################
-    def send_data(self,src, path):
+    def send_data(self,src, path, msg):
         next_node = path[0]
         self.log(f"Forward data to {next_node.id}! (Origin: {src})")
         self.energy_used += ENERGY_ELEC * PACKET_SIZE #Easier to define our packet size in bits here as it's energy is per bit
-        self.send2(path, msg=0, src=src)
+        self.send2(path, msg=msg, src=src)
 
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
@@ -365,8 +365,8 @@ class SensorNode(wsp.Node):
         if self == next_node:
             yield self.timeout(.2)
             self.energy_used += ENERGY_ELEC * PACKET_SIZE
-            self.send_data(src, path, **kwargs)
-    
+            self.send_data(src, path, msg, **kwargs)
+
     def finish(self):
         stats_3dma['indiv_energy_consumption'].append(self.energy_used)
 
@@ -408,7 +408,7 @@ for node in ALL_NODES:
         continue
     stats_3dma['ete_throughputs'].append(node.calculate_throughput(node.path))
     stats_3dma['path_lengths'].append(len(node.path))
-    
+
 stats = BeautifulTable()
 stats.column_headers = ["Statistic", "Value"]
 
