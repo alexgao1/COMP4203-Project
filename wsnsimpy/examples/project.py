@@ -616,8 +616,8 @@ class Scheduler():
     # if not countFlag and not rangeFlag:
         # break
         
-node_tx_range = range_input
-max_nodes = count_input
+# node_tx_range = range_input
+# max_nodes = count_input
 
 sim = wsp.Simulator(
         until=20,

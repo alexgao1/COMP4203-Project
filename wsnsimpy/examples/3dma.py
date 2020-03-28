@@ -11,10 +11,10 @@ import simpy
 DEST   = 1
 
 # Network Parameters
-node_tx_range = 250
-AREA_LENGTH = 5000
-AREA_WIDTH = 6000
-AREA_HEIGHT = 5000
+node_tx_range = 25
+AREA_LENGTH = 500
+AREA_WIDTH = 600
+AREA_HEIGHT = 500
 ENERGY_ELEC = 50 #(NANOJOULES PER BIT)
 ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ??? unused
 PACKET_SIZE = 8000000 # BITS
@@ -432,7 +432,7 @@ prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
-max_nodes = 100
+max_nodes = 150
 
 # Generate nodes
 for numNodes in range(1, max_nodes + 1):

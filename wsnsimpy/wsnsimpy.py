@@ -446,8 +446,13 @@ class Simulator:
         self.init()
         for n in self.nodes:
             n.init()
-        for n in self.nodes:
-            self.env.process(ensure_generator(self.env,n.run))
+            
+        # Random selection of node processes
+        randNodes = [n for n in range(0, len(self.nodes))]
+        random.shuffle(randNodes)
+        for index, node in enumerate(self.nodes):
+            self.env.process(ensure_generator(self.env, self.nodes[randNodes[index]].run))
+            
         # If scheduler exists
         if self.scheduler:
             self.env.process(ensure_generator(self.env,self.scheduler.sim_loop))
