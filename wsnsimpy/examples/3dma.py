@@ -372,6 +372,41 @@ class SensorNode(wsp.Node):
         stats_3dma['indiv_energy_consumption'].append(self.energy_used)
 
 ###########################################################
+
+# Receive user input for node range and count
+# while True:
+    # rangeFlag = True
+    # countFlag = True
+    # while rangeFlag:
+        # try:
+            # range_input = int(input("Input Node Transmission Range (Default: 250, Range: 25 - 500)"))
+        # except ValueError:
+            # print("Error, not a number.")
+            # continue
+        # if range_input < 25 or range_input > 1300:
+            # print("Input not within specified range.")
+            # continue
+        # else:
+            # rangeFlag = False
+            # break
+    # while countFlag:
+        # try:
+            # count_input = int(input("Input Node Count (Default: 100, Range: 100 - 500)"))
+        # except ValueError:
+            # print("Error, not a number.")
+            # continue
+        # if count_input < 100 or count_input > 500:
+            # print("Input not within specified range.")
+            # continue
+        # else:
+            # countFlag = False
+            # break
+    # if not countFlag and not rangeFlag:
+        # break
+        
+# node_tx_range = range_input
+# max_nodes = count_input
+
 sim = wsp.Simulator(
         until=20,
         timescale=1,

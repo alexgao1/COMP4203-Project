@@ -584,20 +584,50 @@ class Scheduler():
         return not all([node.state != EntityState.UNDECIDED for node in self.graph_vertices])
 
 ###########################################################
+
+# Receive user input for node range and count
+# while True:
+    # rangeFlag = True
+    # countFlag = True
+    # while rangeFlag:
+        # try:
+            # range_input = int(input("Input Node Transmission Range (Default: 250, Range: 25 - 500)"))
+        # except ValueError:
+            # print("Error, not a number.")
+            # continue
+        # if range_input < 25 or range_input > 1300:
+            # print("Input not within specified range.")
+            # continue
+        # else:
+            # rangeFlag = False
+            # break
+    # while countFlag:
+        # try:
+            # count_input = int(input("Input Node Count (Default: 100, Range: 100 - 500)"))
+        # except ValueError:
+            # print("Error, not a number.")
+            # continue
+        # if count_input < 100 or count_input > 500:
+            # print("Input not within specified range.")
+            # continue
+        # else:
+            # countFlag = False
+            # break
+    # if not countFlag and not rangeFlag:
+        # break
+        
+node_tx_range = range_input
+max_nodes = count_input
+
 sim = wsp.Simulator(
         until=20,
         timescale=1,
         visual=True,
         terrain_size=TERRAIN_SIZE,
-        title="3DMA Demo")
+        title="3DMA with ONAMA Demo")
 
 # define a line style for parent links
 sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
-
-# place nodes over 100x100 grids
-# BaseNode = sim.add_node(MyNode, (5,5,5))
-# BaseNode.tx_range = node_tx_range
-# BaseNode.logging = True
 
 prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
