@@ -4,6 +4,7 @@ import math
 import random
 import sys
 import wsnsimpy.wsnsimpy_tk as wsp
+import simpy
 
 #SOURCE = 1
 # Changing DEST to 1 and everything else will be a source
@@ -174,10 +175,17 @@ class BaseNode(wsp.Node):
         self.scene.nodewidth(self.id,2)
 
     ###################
+    # Receives request of sending node
+    def send_req(self, req):
+        self.req = req
+
+    ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
         stats_3dma['ete_delay'].append(msg)
         self.log(f"Got data from {src}!")
+        # Release request to allow other nodes to start sending
+        self.resource.release(self.req)
 
 ###########################################################
 class SensorNode(wsp.Node):
@@ -342,10 +350,13 @@ class SensorNode(wsp.Node):
         while True:
             # Gives a 20% probability it will send data
             if random.random() > 0.8:
-                with self.resource.request() as req:
+                req = self.resource.request()
+                # with self.resource.request() as req:
                     # Once the resource is open it will send data
-                    yield req
-                    yield self.timeout(1)
+                yield req
+                yield self.timeout(1)
+                # Gives request to the Base node
+                self.path[len(self.path) - 1].send_req(req)
                 self.log(f"{self.id} wants to send data to the base node!")
                 # Send data to the node in the path
                 self.send_data(self.id, self.path[1::], 0)
@@ -421,7 +432,7 @@ try:
     stats_3dma['avg_energy_consumption'] = (sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE
 except ZeroDivisionError:
     stats_3dma['avg_energy_consumption'] = "N/A"
-    
+
 try:
     stats_3dma['ete_net_delay'] = sum(stats_3dma['ete_delay']) / len(stats_3dma['ete_delay'])
 except ZeroDivisionError:
