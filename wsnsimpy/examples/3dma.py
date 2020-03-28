@@ -30,6 +30,7 @@ stats_3dma = {
     'ete_throughputs': [],
     'ete_net_throughput': -1,
     'ete_delay': [],
+    'ete_net_delay': -1,
     'path_lengths': [],
     'avg_path_length': -1,
     'indiv_energy_consumption': [],
@@ -175,7 +176,7 @@ class BaseNode(wsp.Node):
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
-        self.log(f"PROP TIME: {msg}")
+        stats_3dma['ete_delay'].append(msg)
         self.log(f"Got data from {src}!")
 
 ###########################################################
@@ -417,9 +418,14 @@ stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stat
 sim.run()
 
 try:
-    stats_3dma['avg_energy_consumption'] = float((sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE)
+    stats_3dma['avg_energy_consumption'] = (sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE
 except ZeroDivisionError:
     stats_3dma['avg_energy_consumption'] = "N/A"
+    
+try:
+    stats_3dma['ete_net_delay'] = sum(stats_3dma['ete_delay']) / len(stats_3dma['ete_delay'])
+except ZeroDivisionError:
+    stats_3dma['ete_net_delay'] = "N/A"
 
 stats.append_row(["Node Count", max_nodes])
 stats.append_row(["Node Range", node_tx_range])
@@ -427,7 +433,7 @@ stats.append_row(["Simulation Length", AREA_LENGTH])
 stats.append_row(["Simulation Width", AREA_WIDTH])
 stats.append_row(["Simulation Height", AREA_HEIGHT])
 stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma['ete_net_throughput']])
-stats.append_row(["End-to-End Network Delay (Seconds)", "???"])
+stats.append_row(["End-to-End Network Delay (Seconds)", stats_3dma['ete_net_delay']])
 stats.append_row(["Average Path Length (Hops)", stats_3dma['avg_path_length']])
 stats.append_row(["Average Energy Consumption (Joules)", stats_3dma['avg_energy_consumption']])
 

@@ -29,14 +29,17 @@ TERRAIN_SIZE_WITH_Z = (AREA_LENGTH, AREA_WIDTH, AREA_HEIGHT)
 ALL_NODES = []
 
 #Global Statistics
-stats_3dma = {
+stats_3dma_onama = {
     'ete_throughputs': [],
     'ete_net_throughput': -1,
     'ete_delay': [],
+    'ete_net_delay': -1,
     'path_lengths': [],
     'avg_path_length': -1,
     'indiv_energy_consumption': [],
-    'avg_energy_consumption': -1
+    'avg_energy_consumption': -1,
+    'senders_per_mis': [],
+    'mean_concurrency': -1
 }
 
 class EntityState(Enum):
@@ -188,7 +191,7 @@ class BaseNode(wsp.Node):
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
-        self.log(f"PROP TIME: {msg}")
+        stats_3dma_onama['ete_delay'].append(msg)
         self.log(f"Got data from {src}!")
 
 ###########################################################
@@ -410,7 +413,7 @@ class SensorNode(wsp.Node):
             self.send_data(src, path, msg, **kwargs)
 
     def finish(self):
-        stats_3dma['indiv_energy_consumption'].append(self.energy_used)
+        stats_3dma_onama['indiv_energy_consumption'].append(self.energy_used)
 
 ###########################################################
 class ContentionEntity():
@@ -550,6 +553,7 @@ class Scheduler():
             removed_ents.append(ent)
 
         print("Nodes sent: ", [x.id for x in removed_ents])
+        stats_3dma_onama['senders_per_mis'].append([x.id for x in removed_ents])
 
         # Reset entity states of left over nodes
         for ent in self.graph_vertices:
@@ -618,29 +622,40 @@ for node in ALL_NODES:
     # First node added is always the base node
     if node.id == 0:
         continue
-    stats_3dma['ete_throughputs'].append(node.calculate_throughput(node.path))
-    stats_3dma['path_lengths'].append(len(node.path))
+    stats_3dma_onama['ete_throughputs'].append(node.calculate_throughput(node.path))
+    stats_3dma_onama['path_lengths'].append(len(node.path))
 stats = BeautifulTable()
 stats.column_headers = ["Statistic", "Value"]
-stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
-stats_3dma['avg_path_length'] = float(sum(stats_3dma['path_lengths']) / len(stats_3dma['path_lengths']))
+stats_3dma_onama['ete_net_throughput'] = sum(stats_3dma_onama['ete_throughputs'])
+stats_3dma_onama['avg_path_length'] = float(sum(stats_3dma_onama['path_lengths']) / len(stats_3dma_onama['path_lengths']))
 
 # start the simulation
 sim.run()
 
 try:
-    stats_3dma['avg_energy_consumption'] = float((sum(stats_3dma['indiv_energy_consumption']) / len(stats_3dma['indiv_energy_consumption'])) / NANOJ_TO_JOULE)
+    stats_3dma_onama['avg_energy_consumption'] = (sum(stats_3dma_onama['indiv_energy_consumption']) / len(stats_3dma_onama['indiv_energy_consumption'])) / NANOJ_TO_JOULE
 except ZeroDivisionError:
-    stats_3dma['avg_energy_consumption'] = "N/A"
+    stats_3dma_onama['avg_energy_consumption'] = "N/A"
+    
+try:
+    stats_3dma_onama['ete_net_delay'] = sum(stats_3dma_onama['ete_delay']) / len(stats_3dma_onama['ete_delay'])
+except ZeroDivisionError:
+    stats_3dma_onama['ete_net_delay'] = "N/A"
+    
+try:
+    stats_3dma_onama['mean_concurrency'] = sum([len(slot) for slot in stats_3dma_onama['senders_per_mis']]) / len(stats_3dma_onama['senders_per_mis'])
+except ZeroDivisionError:
+    stats_3dma_onama['mean_concurrency'] = "N/A"
 
 stats.append_row(["Node Count", max_nodes])
 stats.append_row(["Node Range", node_tx_range])
 stats.append_row(["Simulation Length", AREA_LENGTH])
 stats.append_row(["Simulation Width", AREA_WIDTH])
 stats.append_row(["Simulation Height", AREA_HEIGHT])
-stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma['ete_net_throughput']])
-stats.append_row(["End-to-End Network Delay (Seconds)", "???"])
-stats.append_row(["Average Path Length (Hops)", stats_3dma['avg_path_length']])
-stats.append_row(["Average Energy Consumption (Joules)", stats_3dma['avg_energy_consumption']])
+stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma_onama['ete_net_throughput']])
+stats.append_row(["End-to-End Network Delay (Seconds)", stats_3dma_onama['ete_net_delay']])
+stats.append_row(["Average Path Length (Hops)", stats_3dma_onama['avg_path_length']])
+stats.append_row(["Average Energy Consumption (Joules)", stats_3dma_onama['avg_energy_consumption']])
+stats.append_row(["Mean Concurrency", stats_3dma_onama['mean_concurrency']])
 
 print(stats)
