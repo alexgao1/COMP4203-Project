@@ -12,6 +12,8 @@ DEST   = 1
 
 # Network Parameters
 node_tx_range = 25
+max_nodes = 250
+
 AREA_LENGTH = 500
 AREA_WIDTH = 600
 AREA_HEIGHT = 500
@@ -348,7 +350,6 @@ prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
-max_nodes = 150
 
 # Generate nodes
 for numNodes in range(1, max_nodes + 1):
@@ -371,6 +372,8 @@ for node in ALL_NODES:
     stats_3dma['path_lengths'].append(len(node.path))
 
 stats = BeautifulTable()
+stats.numeric_precision = 8
+stats.set_style(BeautifulTable.STYLE_BOX)
 stats.column_headers = ["Statistic", "Value"]
 
 stats_3dma['ete_net_throughput'] = sum(stats_3dma['ete_throughputs'])
