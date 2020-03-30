@@ -398,7 +398,7 @@ stats.append_row(["Simulation Length", AREA_LENGTH])
 stats.append_row(["Simulation Width", AREA_WIDTH])
 stats.append_row(["Simulation Height", AREA_HEIGHT])
 stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma['ete_net_throughput']])
-stats.append_row(["End-to-End Network Delay (Seconds)", stats_3dma['ete_net_delay']])
+stats.append_row(["End-to-End Network Delay", stats_3dma['ete_net_delay']])
 stats.append_row(["Average Path Length (Hops)", stats_3dma['avg_path_length']])
 stats.append_row(["Average Energy Consumption (Joules)", stats_3dma['avg_energy_consumption']])
 

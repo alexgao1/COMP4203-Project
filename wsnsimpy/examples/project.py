@@ -14,6 +14,7 @@ DEST   = 1
 
 # Network Parameters
 node_tx_range = 100
+max_nodes = 125
 AREA_LENGTH = 500
 AREA_WIDTH = 600
 AREA_HEIGHT = 500
@@ -560,7 +561,7 @@ prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
-max_nodes = 125
+
 for numNodes in range(1, max_nodes + 1):
     prevCoords = gen_within_range(prevCoords, node_tx_range)
     node = sim.add_node(SensorNode, prevCoords)
@@ -582,6 +583,8 @@ for node in ALL_NODES:
     stats_3dma_onama['ete_throughputs'].append(node.calculate_throughput(node.path))
     stats_3dma_onama['path_lengths'].append(len(node.path))
 stats = BeautifulTable()
+stats.numeric_precision = 8
+stats.set_style(BeautifulTable.STYLE_BOX)                                                                        
 stats.column_headers = ["Statistic", "Value"]
 stats_3dma_onama['ete_net_throughput'] = sum(stats_3dma_onama['ete_throughputs'])
 stats_3dma_onama['avg_path_length'] = float(sum(stats_3dma_onama['path_lengths']) / len(stats_3dma_onama['path_lengths']))
@@ -610,7 +613,7 @@ stats.append_row(["Simulation Length", AREA_LENGTH])
 stats.append_row(["Simulation Width", AREA_WIDTH])
 stats.append_row(["Simulation Height", AREA_HEIGHT])
 stats.append_row(["End-to-End Network Throughput (Mbps)", stats_3dma_onama['ete_net_throughput']])
-stats.append_row(["End-to-End Network Delay (Seconds)", stats_3dma_onama['ete_net_delay']])
+stats.append_row(["End-to-End Network Delay", stats_3dma_onama['ete_net_delay']])
 stats.append_row(["Average Path Length (Hops)", stats_3dma_onama['avg_path_length']])
 stats.append_row(["Average Energy Consumption (Joules)", stats_3dma_onama['avg_energy_consumption']])
 stats.append_row(["Mean Concurrency", stats_3dma_onama['mean_concurrency']])
