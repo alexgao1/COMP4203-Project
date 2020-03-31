@@ -43,24 +43,29 @@ stats_3dma_onama = {
     'mean_concurrency': -1
 }
 
+# All possible states for an ContentionEntity
 class EntityState(Enum):
     UNDECIDED = 1
     ACTIVE = 2
     INACTIVE = 3
 
+# Global time used for hasing by ContentionEntity
 TIME = int(time.time())
 
 ###########################################################
 def delay():
     return random.uniform(.2,.8)
 
+###########################################################
 def is_point_in_sphere(center, range, checkPoint):
     return (((checkPoint[0] - center[0])**2 + (checkPoint[1] - center[1])**2 +
             (checkPoint[2] - center[2])**2) < range**2)
 
+###########################################################
 def gen_rand_sphere_point(pos, dimension, range):
     return random.uniform(pos[dimension] - range, pos[dimension] + range + 1)
 
+###########################################################
 def gen_within_range(pos, range):
     while True:
         newX = newY = newZ = sys.maxsize
@@ -73,6 +78,7 @@ def gen_within_range(pos, range):
         if is_point_in_sphere(pos, range, (newX, newY, newZ)):
             return (newX, newY, newZ)
 
+###########################################################
 def update_time():
     TIME = time.time()
 
@@ -105,12 +111,35 @@ class BaseNode(wsp.Node):
     def run(self):
         self.scene.nodecolor(self.id,1,0,0)
         self.scene.nodewidth(self.id,2)
+        self.node_count = 0
+        self.req = []
+
+    ###################
+    # Gives the request object to the BaseNode to release it once it receives all message
+    def send_request_object(self,req):
+        self.req.append(req)
+
+    ###################
+    # Informs the BaseNode how many nodes will be sending data in the current slot
+    def send_num_nodes(self,num_nodes):
+        self.num_nodes = num_nodes
 
     ###################
     def on_receive(self, sender, path, msg, src, **kwargs):
         # When receiving data log it
         stats_3dma_onama['ete_delay'].append(msg)
         self.log(f"Got data from {src}!")
+        # Append counter for number of messages received
+        self.node_count += 1
+        # Once all messages have been received for this slot. Reset counter and release the request to allow the next slot to go
+        if self.node_count == self.num_nodes:
+            self.node_count = 0
+            self.release()
+
+    ###################
+    # Release the oldest request
+    def release(self):
+        self.resource.release(self.req.pop(0))
 
 ###########################################################
 class SensorNode(wsp.Node):
@@ -123,14 +152,12 @@ class SensorNode(wsp.Node):
         self.path = []
         # Nodes that have been traversed
         self.traversed_nodes = []
+        # Thorughput is calculated before sending messages is performed
         self.throughput = self.routing_3dma_ds()
         self.energy_used = 0
-        self.hash = self.generate_hash()
-        self.state = EntityState.UNDECIDED
 
     ###################
     def run(self):
-        # I do not know which color should be picked
         self.scene.nodecolor(self.id,.7,.7,.7)
         self.log("Start sending data.")
         # Trigger an event of actually sending data
@@ -142,31 +169,22 @@ class SensorNode(wsp.Node):
         # Next you hash that concat, digest it in hex, convert it to base 10, cast it to a string, concat with id again, then cast it back to an int
         self.hash = int(str(int(hashlib.md5(concat_string.encode('utf-8')).hexdigest(),16)) + str(self.id))
 
+    ###################
     def get_hash(self):
         return self.hash
 
-    def dmis(self):
-        neighbour_list = self.find_neighbours(self, routeSearch=False)
-        # while self.state == EntityState.UNDECIDED: #Will cause infinite loop
-        # If current node's hash is greater than all neighbours
-        if all([self.hash > node.hash and node.state != EntityState.INACTIVE for node in neighbour_list]):
-            self.state = EntityState.ACTIVE
-        elif any([node.state == EntityState.ACTIVE for node in neighbour_list]):
-            self.state = EntityState.INACTIVE
-
     ###################
     # Find all neighbours within transmission range
-    def find_neighbours(self, IM, parent_node = None, routeSearch = True):
+    def find_neighbours(self, IM, parent_node = None):
         neighbour_list = []
         node_search_space = copy.copy(ALL_NODES)
         # If the function is used for route finding then remove nodes from search space
-        if routeSearch:
-            # Remove all nodes previously traversed to
-            for node in self.traversed_nodes:
-                node_search_space.remove(node)
-            # If parent node exists and it is still in search space
-            if parent_node and parent_node in node_search_space:
-                node_search_space.remove(parent_node)
+        # Remove all nodes previously traversed to
+        for node in self.traversed_nodes:
+            node_search_space.remove(node)
+        # If parent node exists and it is still in search space
+        if parent_node and parent_node in node_search_space:
+            node_search_space.remove(parent_node)
 
         for node in node_search_space:
             # If within range then it's a neighbour
@@ -235,13 +253,11 @@ class SensorNode(wsp.Node):
     # Calculate Throughput
     def calculate_throughput(self, path):
         f_size = 1                   #Packet Size is in MB
-        # dist_list = len(path)           #NOTE: Figure out if path should be reduced by one since it MIGHT include itself
         total_time = 0
         code_rate = None
         first_value = 150
         second_value = 200
         # Third value is implied to be: second_value < third_value < node_tx_range
-        # for path in self.path:
         for i in range(len(self.path) - 1):
             path1 = self.path[i]
             path2 = self.path[i+1]
@@ -293,17 +309,12 @@ class SensorNode(wsp.Node):
 
     ###################
     def start_send_data(self):
-        # self.scene.clearlinks() #It looks better without this
         while True:
             # Gives a 20% probability it will send data
             if random.random() > 0.8:
-                # with self.resource.request() as req:
-                    # Once the resource is open it will send data
-                    # yield req
                 yield self.timeout(1)
                 self.log(f"{self.id} wants to send data to the base node!")
                 # Send data to the node in the path
-                # self.send_data(self.id, self.path[1::])
                 onama_scheduler.request_to_send(self)
                 break
             else:
@@ -343,7 +354,7 @@ class ContentionEntity():
         self.state = EntityState.UNDECIDED
         self.neighbours = []
 
-        ############################
+    ############################
     def __repr__(self):
         s = "I"
         if self.state == EntityState.UNDECIDED:
@@ -352,9 +363,11 @@ class ContentionEntity():
             s = "A"
         return '<CE %d:N=%d:S=%s>' % (self.id,len(self.neighbours,), s)
 
+    ############################
     def add_neighbour(self, ent):
         self.neighbours.append(ent)
 
+    ############################
     # Remove specific neighbour
     def remove_neighbour(self, ent):
         try:
@@ -362,79 +375,73 @@ class ContentionEntity():
         except:
             pass
 
+    ############################
+    # Remove a set of neighbours
     def remove_neighbour_list(self, ent_list):
         for ent in ent_list:
             self.remove_neighbour(ent)
 
+    ############################
     # Remove ALL neighbours
     def clear_neighbours(self):
         self.neighbours = []
 
+    ############################
     def generate_hash(self):
         # First you concat the id and the time
         concat_string = str(self.id) + str(TIME)
         # Next you hash that concat, digest it in hex, convert it to base 10, cast it to a string, concat with id again, then cast it back to an int
         self.hash = int(str(int(hashlib.md5(concat_string.encode('utf-8')).hexdigest(),16)) + str(self.id))
 
+    ############################
     def get_hash(self):
         return self.hash
 
+    ############################
     def dmis(self):
-        # while self.state == EntityState.UNDECIDED: #Will cause infinite loop
         # If current node's hash is greater than all neighbours
         if self.state == EntityState.UNDECIDED:
-            # if len(self.neighbours) < 1:
-            #     print("Node " + str(self.id) + " has no neighbours")
+            # If all neighbours are either inactive or have a lower hash then become ACTIVE
             if all([self.hash > ent.hash and ent.state != EntityState.INACTIVE for ent in self.neighbours]):
                 self.state = EntityState.ACTIVE
-                # print("Node " + str(self.id) + "  \tis now ACTIVE")
+            # If any neighbour is ACTIVE then become INACTIVE
             elif any([node.state == EntityState.ACTIVE for node in self.neighbours]):
                 self.state = EntityState.INACTIVE
-                # print("Node " + str(self.id) + "  \tis now INACTIVE")
+            # Else remain undecided
 
 ###########################################################
 # ONAMA Scheduler
 class Scheduler():
+
+    ############################
     def __init__(self, res):
         # 2D list
         self.resource = res
-        # self.timeout = self.sim.timeout IMPORT SIM INTO THIS CLASS CHECK LINE $# OF wsnsimpy.py *********************************
-        self.queue = []
         self.MIS = []
         self.ent_to_node_pair = {}
         self.node_to_ent_pair = {}
-        self.graph = []
         self.graph_vertices = []
         self.graph_edges = []
-        self.entities = []
         self.timeout = sim.timeout
+        # Create ContentionEnitity objects for each node in the network
         for node in ALL_NODES:
             if type(node) is SensorNode:
                 self.add_node(node)
 
-    '''
-    Scheduler gets initialized with ALL_NODES and stores it. Every node then gets a contention entity, dictionary is made for both
-    node -> entity and entity -> node.
-    When a node wants to send it requests so from the scheduler, its entity is added to the graph
-    Scheduler(This class) has a timer that after every interval it creates the MIS using the entities in the graph. It also updates the global time and has every entity update its hash
-    DMIS is done with the entities
-    Cycle through all ACTIVE entities and allow their corresponding nodes to send their data
-    Reset graph and mis lists
-    Every node that didn't get to send retries while the ones that completed go through the probability again
-    TODO: Bring dmis, hash and state from SensorNode into either Scheduler or ContentionEntity
-    Remove just active nodes from MIS after they send
-    Regenerate hashes somewhere
-    '''
+    ############################
     def add_node(self, node):
         ent = ContentionEntity(node)
-        self.entities.append(ent)
         self.ent_to_node_pair[ent] = node
         self.node_to_ent_pair[node] = ent
 
+    ############################
+    # Handler for nodes that would like to send
     def request_to_send(self, node):
         ent = self.node_to_ent_pair[node]
         self.add_to_graph(ent)
 
+    ############################
+    # Add entity to conflict graph
     def add_to_graph(self, ent):
         # Update entity hash when entering the graph
         ent.generate_hash()
@@ -450,20 +457,30 @@ class Scheduler():
         # Add it to current verticies
         self.graph_vertices.append(ent)
 
+    ############################
     def sim_loop(self):
         while True:
-            # with self.resource.request() as req:
-            yield self.timeout(3)
+            # Create a request object
+            req = self.resource.request()
+            # Send current request object to base node
+            ALL_NODES[0].send_request_object(req)
+            yield req
+            yield self.timeout(1)
             update_time()
             # Run all nodes in MIS and clear things
-            print("Running MIS")
+
             self.run_mis()
 
+    ############################
     def run_mis(self):
         # Make sure all entities are not UNDECIDED
         self.set_dmis()
         # Add all active entities to the MIS
         self.mis()
+        # If nothing in the MIS then release the request and continue
+        if not self.MIS:
+            ALL_NODES[0].release()
+        ALL_NODES[0].send_num_nodes(len(self.MIS))
         # Run all ACTIVE nodes
         for active_ent in self.MIS:
             self.ent_to_node_pair[active_ent].success_send()
@@ -493,6 +510,7 @@ class Scheduler():
         # Empty MIS
         self.MIS = []
 
+    ############################
     def set_dmis(self):
         undecided = True
         # Sets every nodes state until none left are undecided
@@ -501,12 +519,14 @@ class Scheduler():
                 node.dmis()
             undecided = self.remaining_undecided()
 
+    ############################
     def mis(self):
         # Add all active nodes to MIS
         for ent in self.graph_vertices:
             if ent.state == EntityState.ACTIVE:
                 self.MIS.append(ent)
 
+    ############################
     def remaining_undecided(self):
         # Returns true if all node states are NOT undecided
         return not all([node.state != EntityState.UNDECIDED for node in self.graph_vertices])
@@ -557,11 +577,15 @@ sim = wsp.Simulator(
 # define a line style for parent links
 sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
 
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        node_tx_range = int(sys.argv[1])
+        max_nodes = int(sys.argv[2])
+
 prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
 BaseNode.logging = True
 ALL_NODES.append(BaseNode)
-
 for numNodes in range(1, max_nodes + 1):
     prevCoords = gen_within_range(prevCoords, node_tx_range)
     node = sim.add_node(SensorNode, prevCoords)
@@ -584,7 +608,7 @@ for node in ALL_NODES:
     stats_3dma_onama['path_lengths'].append(len(node.path))
 stats = BeautifulTable()
 stats.numeric_precision = 8
-stats.set_style(BeautifulTable.STYLE_BOX)                                                                        
+stats.set_style(BeautifulTable.STYLE_BOX)
 stats.column_headers = ["Statistic", "Value"]
 stats_3dma_onama['ete_net_throughput'] = sum(stats_3dma_onama['ete_throughputs'])
 stats_3dma_onama['avg_path_length'] = float(sum(stats_3dma_onama['path_lengths']) / len(stats_3dma_onama['path_lengths']))
@@ -619,3 +643,6 @@ stats.append_row(["Average Energy Consumption (Joules)", stats_3dma_onama['avg_e
 stats.append_row(["Mean Concurrency", stats_3dma_onama['mean_concurrency']])
 
 print(stats)
+
+# with open("ONAMA_stats_range="+ str(node_tx_range) + "_nodes="+ str(max_nodes), "a") as file:
+    # file.write(str(stats_3dma_onama['ete_net_throughput']) + "," + str(stats_3dma_onama['ete_net_delay']) + "," + str(stats_3dma_onama['avg_path_length']) + "," + str(stats_3dma_onama['avg_energy_consumption']) + "\n")

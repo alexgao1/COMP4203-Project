@@ -11,8 +11,8 @@ import simpy
 DEST   = 1
 
 # Network Parameters
-node_tx_range = 25
-max_nodes = 250
+node_tx_range = 125
+max_nodes = 50
 
 AREA_LENGTH = 500
 AREA_WIDTH = 600
@@ -44,13 +44,16 @@ stats_3dma = {
 def delay():
     return random.uniform(.2,.8)
 
+###########################################################
 def is_point_in_sphere(center, range, checkPoint):
     return (((checkPoint[0] - center[0])**2 + (checkPoint[1] - center[1])**2 +
             (checkPoint[2] - center[2])**2) < range**2)
 
+###########################################################
 def gen_rand_sphere_point(pos, dimension, range):
     return random.uniform(pos[dimension] - range, pos[dimension] + range + 1)
 
+###########################################################
 def gen_within_range(pos, range):
     while True:
         newX = newY = newZ = sys.maxsize
@@ -83,6 +86,7 @@ def angle(vec1, vec2):
     dp = sum(p*q for p,q in zip(vec1,vec2))
     den = euclid_norm(vec1) * euclid_norm(vec2)
     return math.acos(dp/den)
+
 ###########################################################
 class BaseNode(wsp.Node):
 
@@ -206,13 +210,11 @@ class SensorNode(wsp.Node):
     # Calculate Throughput
     def calculate_throughput(self, path):
         f_size = 1                   #Packet Size is in MB
-        # dist_list = len(path)           #NOTE: Figure out if path should be reduced by one since it MIGHT include itself
         total_time = 0
         code_rate = None
         first_value = 150
         second_value = 200
         # Third value is implied to be: second_value < third_value < node_tx_range
-        # for path in self.path:
         for i in range(len(self.path) - 1):
             path1 = self.path[i]
             path2 = self.path[i+1]
@@ -264,13 +266,10 @@ class SensorNode(wsp.Node):
 
     ###################
     def start_send_data(self):
-        # self.scene.clearlinks() #It looks better without this
         while True:
             # Gives a 20% probability it will send data
             if random.random() > 0.8:
                 req = self.resource.request()
-                # with self.resource.request() as req:
-                    # Once the resource is open it will send data
                 yield req
                 yield self.timeout(1)
                 # Gives request to the Base node
@@ -332,7 +331,7 @@ class SensorNode(wsp.Node):
             # break
     # if not countFlag and not rangeFlag:
         # break
-        
+
 # node_tx_range = range_input
 # max_nodes = count_input
 
