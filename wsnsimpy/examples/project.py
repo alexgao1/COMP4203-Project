@@ -7,6 +7,7 @@ import wsnsimpy.wsnsimpy_tk as wsp
 from enum import Enum
 import time
 import hashlib
+import os
 
 #SOURCE = 1
 # Changing DEST to 1 and everything else will be a source
@@ -155,6 +156,7 @@ class SensorNode(wsp.Node):
         # Thorughput is calculated before sending messages is performed
         self.throughput = self.routing_3dma_ds()
         self.energy_used = 0
+        self.prev_hash = None
 
     ###################
     def run(self):
@@ -162,16 +164,6 @@ class SensorNode(wsp.Node):
         self.log("Start sending data.")
         # Trigger an event of actually sending data
         self.start_process(self.start_send_data())
-
-    def generate_hash(self):
-        # First you concat the id and the time
-        concat_string = str(self.id) + str(TIME)
-        # Next you hash that concat, digest it in hex, convert it to base 10, cast it to a string, concat with id again, then cast it back to an int
-        self.hash = int(str(int(hashlib.md5(concat_string.encode('utf-8')).hexdigest(),16)) + str(self.id))
-
-    ###################
-    def get_hash(self):
-        return self.hash
 
     ###################
     # Find all neighbours within transmission range
@@ -386,12 +378,15 @@ class ContentionEntity():
     def clear_neighbours(self):
         self.neighbours = []
 
-    ############################
     def generate_hash(self):
         # First you concat the id and the time
         concat_string = str(self.id) + str(TIME)
         # Next you hash that concat, digest it in hex, convert it to base 10, cast it to a string, concat with id again, then cast it back to an int
-        self.hash = int(str(int(hashlib.md5(concat_string.encode('utf-8')).hexdigest(),16)) + str(self.id))
+        # self.hash = int(str(int(hashlib.md5(concat_string.encode('utf-8')).hexdigest(),16)) + str(self.id))
+        h = hashlib.pbkdf2_hmac('sha256', concat_string.encode('utf-8'), os.urandom(1024), 10, dklen=32)
+        ret = int(str(int(h.hex(),16)) + str(self.id))
+        random.seed(ret)
+        self.hash = random.random()
 
     ############################
     def get_hash(self):
@@ -491,6 +486,7 @@ class Scheduler():
             # Remove vertices
             self.graph_vertices.remove(ent)
             ent.state = EntityState.UNDECIDED
+            ent.generate_hash()
             # Remove edges. filter removes any instance that satisfies the condition of the first argument.
             # Any edge tuple that contains an active entry is filtered out
             self.graph_edges = list(filter(lambda x: x[0] != ent and x[1] != ent, self.graph_edges))
