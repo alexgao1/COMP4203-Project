@@ -156,7 +156,6 @@ class SensorNode(wsp.Node):
         # Thorughput is calculated before sending messages is performed
         self.throughput = self.routing_3dma_ds()
         self.energy_used = 0
-        self.prev_hash = None
 
     ###################
     def run(self):
