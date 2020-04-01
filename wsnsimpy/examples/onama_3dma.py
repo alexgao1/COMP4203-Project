@@ -16,8 +16,8 @@ DEST   = 1
 # Network Parameters
 node_tx_range = 100
 max_nodes = 125
-AREA_LENGTH = 500
-AREA_WIDTH = 600
+AREA_LENGTH = 800
+AREA_WIDTH = 700
 AREA_HEIGHT = 500
 ENERGY_ELEC = 50 #(NANOJOULES PER BIT)
 ENERGY_AMP = 100 #(PICOJOULE PER BIT PER SQUARE METER) - ???
@@ -529,41 +529,41 @@ class Scheduler():
 ###########################################################
 
 # Receive user input for node range and count
-# while True:
-    # rangeFlag = True
-    # countFlag = True
-    # while rangeFlag:
-        # try:
-            # range_input = int(input("Input Node Transmission Range (Default: 250, Range: 25 - 500)"))
-        # except ValueError:
-            # print("Error, not a number.")
-            # continue
-        # if range_input < 25 or range_input > 1300:
-            # print("Input not within specified range.")
-            # continue
-        # else:
-            # rangeFlag = False
-            # break
-    # while countFlag:
-        # try:
-            # count_input = int(input("Input Node Count (Default: 100, Range: 100 - 500)"))
-        # except ValueError:
-            # print("Error, not a number.")
-            # continue
-        # if count_input < 100 or count_input > 500:
-            # print("Input not within specified range.")
-            # continue
-        # else:
-            # countFlag = False
-            # break
-    # if not countFlag and not rangeFlag:
-        # break
+while True:
+    rangeFlag = True
+    countFlag = True
+    while rangeFlag:
+        try:
+            range_input = int(input("Input Node Transmission Range (Default: 250, Range: 25 - 500)"))
+        except ValueError:
+            print("Error, not a number.")
+            continue
+        if range_input < 25 or range_input > 500:
+            print("Input not within specified range.")
+            continue
+        else:
+            rangeFlag = False
+            break
+    while countFlag:
+        try:
+            count_input = int(input("Input Node Count (Default: 100, Range: 100 - 500)"))
+        except ValueError:
+            print("Error, not a number.")
+            continue
+        if count_input < 100 or count_input > 500:
+            print("Input not within specified range.")
+            continue
+        else:
+            countFlag = False
+            break
+    if not countFlag and not rangeFlag:
+        break
 
-# node_tx_range = range_input
-# max_nodes = count_input
+node_tx_range = range_input
+max_nodes = count_input
 
 sim = wsp.Simulator(
-        until=100,
+        until=60,
         timescale=1,
         visual=True,
         terrain_size=TERRAIN_SIZE,
@@ -571,11 +571,6 @@ sim = wsp.Simulator(
 
 # define a line style for parent links
 sim.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        node_tx_range = int(sys.argv[1])
-        max_nodes = int(sys.argv[2])
 
 prevCoords = (40, 40, 40)
 BaseNode = sim.add_node(BaseNode, prevCoords)
@@ -585,7 +580,7 @@ for numNodes in range(1, max_nodes + 1):
     prevCoords = gen_within_range(prevCoords, node_tx_range)
     node = sim.add_node(SensorNode, prevCoords)
     node.tx_range = node_tx_range
-    node.logging = True
+    node.logging = False
     ALL_NODES.append(node)
 
 for node in ALL_NODES:
@@ -638,6 +633,3 @@ stats.append_row(["Average Energy Consumption (Joules)", stats_3dma_onama['avg_e
 stats.append_row(["Mean Concurrency", stats_3dma_onama['mean_concurrency']])
 
 print(stats)
-
-# with open("ONAMA_stats_range="+ str(node_tx_range) + "_nodes="+ str(max_nodes), "a") as file:
-    # file.write(str(stats_3dma_onama['ete_net_throughput']) + "," + str(stats_3dma_onama['ete_net_delay']) + "," + str(stats_3dma_onama['avg_path_length']) + "," + str(stats_3dma_onama['avg_energy_consumption']) + "\n")
