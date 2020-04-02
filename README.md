@@ -12,7 +12,5 @@ Setup:
    * WsnSimPy
    * beautifultable
 2. Acquire the contents of this repository locally.
-3. Copy the following files into `%AppData%\Roaming\Python\PythonXX\site-packages\wsnsimpy`
-   * `wsnsimpy.py`
-   * `wsnsimpy_tk.py`
+3. Replace your system's `wsnsimpy` folder with our version of `wsnsimpy`. This can be done by copying it into either `%AppData%\Roaming\Python\PythonXX\site-packages` or `C:\Users\<Your User name>\AppData\Local\Programs\Python\Python<Version #>\Lib\site-packages` or whereever your `site-packages` folder is located. It may depend on how your Python version was installed. 
 4. Run the Python scripts `3dma.py` or `onama_3dma.py` (found in [wsnsimpy\examples](wsnsimpy/examples)).
