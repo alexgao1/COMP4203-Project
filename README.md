@@ -12,7 +12,7 @@ Setup:
    * WsnSimPy
    * beautifultable
 2. Acquire the contents of this repository locally.
-3. Copy the following files into `%AppData%\Roaming\Python\...\site-packages\wsnsimpy`
+3. Copy the following files into `%AppData%\Roaming\Python\PythonXX\site-packages\wsnsimpy`
    * `wsnsimpy.py`
    * `wsnsimpy_tk.py`
 4. Run the Python scripts `3dma.py` or `onama_3dma.py` (found in [wsnsimpy\examples](wsnsimpy/examples)).
